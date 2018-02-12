@@ -1,0 +1,30 @@
+# See https://atom.io/docs/latest/hacking-atom-package-word-count#menus for more details
+'context-menu':
+  'atom-text-editor': [
+    {
+      'label': 'Toggle clojure-repl'
+      'command': 'clojure-repl:toggle'
+    },
+    {
+      'label': 'Execute clojure-repl'
+      'command': 'clojure-repl:execute-entered-text'
+    }
+  ]
+'menu': [
+  {
+    'label': 'Packages'
+    'submenu': [
+      'label': 'clojure-repl'
+      'submenu': [
+        {
+          'label': 'Toggle'
+          'command': 'clojure-repl:toggle'
+        },
+        {
+          'label': 'Execute'
+          'command': 'clojure-repl:execute-entered-text'
+        }
+      ]
+    ]
+  }
+]

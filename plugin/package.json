@@ -1,0 +1,16 @@
+{
+  "name": "clojure-repl",
+  "main": "./lib/clojure-repl",
+  "version": "0.1.0",
+  "description": "Clojure/ClojureScript REPL for Atom",
+  "keywords": [
+  ],
+  "repository": "https://github.com/hitsusorisaku/clojure-repl",
+  "license": "Eclipse Public License",
+  "engines": {
+    "atom": ">=1.0.0 <2.0.0"
+  },
+  "dependencies": {
+    "nrepl-client": ">=0.2.3"
+  }
+}

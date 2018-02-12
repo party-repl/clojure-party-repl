@@ -1,0 +1,16 @@
+/resources/public/js/compiled/**
+.DS_Store
+pom.xml
+*jar
+plugin/lib
+plugin/node_modules
+/classes/
+/out/
+/target/
+.lein-deps-sum
+.lein-repl-history
+.lein-plugins/
+.repl
+.nrepl-*
+Clojure\ REPL\ Entry
+Clojure\ REPL\ History
