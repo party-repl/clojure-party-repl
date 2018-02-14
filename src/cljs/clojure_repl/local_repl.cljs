@@ -8,19 +8,16 @@
 ;; TODO: Support having multiple REPLs
 
 (def ashell (node/require "atom"))
+(def fs (node/require "fs"))
 (def process (node/require "process"))
 (def child-process (node/require "child_process"))
 (def nrepl (node/require "nrepl-client"))
 
 (def lein-exec (string/split "lein repl" #" "))
 
-;; NOTE: Set this to the path with your project.clj
-;; TODO: Stop hardcoding this :)
-(def hardcoded-cwd "/Users/MyAccount/MyProject")
-
 ;; TODO: Merge with the common/state
 (def repl-state
-  (atom {:current-working-directory hardcoded-cwd
+  (atom {:current-working-directory ""
          :lein-path "/usr/local/bin" ;; TODO: Read this from Settings
          :process-env nil
          :lein-process nil
@@ -28,7 +25,7 @@
          :session nil
          :host "localhost"
          :port nil
-         :current-ns "user"}))
+         :current-ns nil}))
 
 (defn stdout-to-editor [text & without-newline]
   (when-let [editor (:host-output-editor @state)]
@@ -49,6 +46,7 @@
     (when (.-err message)
       (stdout-to-editor (.-err message)))
     (when (and (.-ns message) (= (.-session message) (:session @repl-state)))
+      (.log js/console (str "Message arrived with ns: " (.-ns message)))
       (swap! repl-state assoc :current-ns (.-ns message))
       (when (.-out message)
         (stdout-to-editor (.-out message)))
@@ -60,9 +58,9 @@
   (.log js/console "Connecting to nrepl...")
   (when (:connection @repl-state)
     (close-connection))
-  (let [connection (.connect nrepl (goog.object.create "host" (:host @repl-state)
-                                                       "port" (:port @repl-state)
-                                                       "verbose" false))]
+  (let [connection (.connect nrepl (clj->js {"host" (:host @repl-state)
+                                             "port" (:port @repl-state)
+                                             "verbose" false}))]
     (swap! repl-state assoc :connection connection)
     (.on connection "error" (fn [err]
                               (.log js/console (str "clojure-repl: connection error " err))
@@ -113,6 +111,7 @@
     (.send (:connection @repl-state) eval-options (fn [messages]
                                                       (try
                                                         (.log js/console (str "Receiving result from repl..."))
+                                                        (.log js/console messages)
                                                         (doseq [message messages]
                                                           (cond
                                                             (.-value message) (stdout-to-editor (.-value message))
@@ -132,17 +131,31 @@
 (defn look-for-port [data]
   (.log js/console "Looking for port...")
   (let [data-string (.toString data)]
-    (.log js/console (str "Is there port info?..." data-string))
+    (.log js/console (str "Is there port info?... " data-string))
     (if (nil? (:port @repl-state))
-        (when-let [match (re-find #"\d+" data-string)]
+        (when-let [match (re-find #"nREPL server started on port (\d+)" data-string)]
           (.log js/console (str "Port found!!! " match))
-          (swap! repl-state assoc :port match)
+          (swap! repl-state assoc :port (second match))
           (connect-nrepl)))
     (stdout-to-editor data-string)))
 
+(defn look-for-ns [data]
+  (.log js/console "Looking for ns...")
+  (let [data-string (.toString data)]
+    (.log js/console (str "Is there ns?... " data-string))
+    (if (nil? (:current-ns @repl-state))
+        (when-let [match (re-find #"(\S+)=>" data-string)]
+          (.log js/console (str "Namespace found!!! " match))
+          (swap! repl-state assoc :current-ns (second match))))
+    (stdout-to-editor data-string)))
+
+(defn look-for-initial-repl-info [data]
+  (look-for-port data)
+  (look-for-ns data))
+
 (defn setup-process [lein-process]
   (.log js/console "Setting up process...")
-  (.on (.-stdout lein-process) "data" look-for-port)
+  (.on (.-stdout lein-process) "data" look-for-initial-repl-info)
   (.on (.-stderr lein-process) "data" (fn [data]
                                         (.log js/console (str "Stderr... " (.toString data)))))
   (.on lein-process "error" (fn [error]
@@ -163,18 +176,28 @@
                              (catch js/Exception error
                                (.error js/console error))))))
 
+;; TODO: Look for the project.clj file and decide which path to use
+(defn get-project-path []
+  (first (.getPaths (.-project js/atom))))
+
+(defn get-project-clj [project-path]
+  (.log js/console (str "Looking for project.clj at " project-path + "/project.clj"))
+  (.existsSync fs (str project-path + "/project.clj")))
+
 (defn start-lein-process [env & args]
   (.log js/console "Starting lein process...")
-  (let [evn (goog.object.create "cwd" (:current-working-directory @repl-state)
-                                "env" env)  ; TODO: Do we need to make it 'detached: true'?
-        lein-process (.spawn child-process (first lein-exec) (clj->js (rest lein-exec)) env)]
-    (swap! repl-state assoc :process-env env)
+  (let [project-path (get-project-path)
+        process-env (clj->js {"cwd" project-path
+                              "env" (goog.object.set env "PWD" project-path)})
+        lein-process (.spawn child-process (first lein-exec) (clj->js (rest lein-exec)) process-env)]
+    (swap! repl-state assoc :current-working-directory project-path)
+    (swap! repl-state assoc :process-env process-env)
     (swap! repl-state assoc :lein-process lein-process)
     (setup-process lein-process)))
 
 (defn get-env []
   (let [env (goog.object.clone (.-env process))]
-    (doseq [k ["ATOM_HOME" "ATOM_SHELL_INTERNAL_RUN_AS_NODE" "GOOGLE_API_KEY" "NODE_ENV" "NODE_PATH" "userAgent" "taskPath"]]
+    (doseq [k ["PWD" "ATOM_HOME" "ATOM_SHELL_INTERNAL_RUN_AS_NODE" "GOOGLE_API_KEY" "NODE_ENV" "NODE_PATH" "userAgent" "taskPath"]]
       (goog.object.remove env k))
     (goog.object.set env "PATH" (:lein-path @repl-state))
     (.log js/console (str "PROCESS ENVIRONMENT: " (.-PATH env)))
