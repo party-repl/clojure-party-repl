@@ -9,6 +9,7 @@
 (def input-editor-title "Clojure REPL Entry")
 (def execute-comment ";execute")
 
+;; TODO: Support repl history
 (def state
   (atom {:subscriptions (CompositeDisposable.)
          :process nil
@@ -18,12 +19,15 @@
          :guest-output-editor nil
          :history []}))
 
+(defn add-subscription [disposable]
+  (.add (:subscriptions @state) disposable))
+
 ;; TODO: Use pprint like this (with-out-str (pprint text))
 (defn stdout [editor text & without-newline]
   (let [buffer (.getBuffer editor)]
     (when without-newline
-      (.append buffer "\n" (goog.object.create "undo" "skip")))
-    (.append buffer text (goog.object.create "undo" "skip")))
+      (.append buffer "\n\n" (clj->js {"undo" "skip"})))
+    (.append buffer text (clj->js {"undo" "skip"})))
   (.scrollToBottom editor))
 
 (defn insert-execute-comment [editor]

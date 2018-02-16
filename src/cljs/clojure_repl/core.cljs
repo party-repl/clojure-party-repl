@@ -27,12 +27,6 @@
 
 (def subscriptions (CompositeDisposable.))
 
-(defn toggle []
-  (.log js/console "clojure-repl got toggled!")
-  (host/create-output-editor)
-  (host/create-input-editor)
-  (local-repl/start))
-
 ;; Dispose all disposables
 (defn deactivate []
     (.log js/console "Deactivating clojure-repl...")
@@ -41,17 +35,26 @@
     (doseq [disposable @disposables]
       (.dispose disposable)))
 
-(defn serialize []
-  nil)
+(defn start-repl []
+  (.log js/console "clojure-repl started!")
+  (host/create-output-editor)
+  (host/create-input-editor)
+  (local-repl/start))
+
+(defn execute-entered-text []
+  (common/prepare-to-execute))
 
 (defn add-commands []
-  (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:toggle" toggle))
-  (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:execute-entered-text" common/prepare-to-execute)))
+  (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:startRepl" start-repl))
+  (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:executeEnteredText" execute-entered-text)))
 
 (defn activate [state]
   (.log js/console "Activating clojure-repl...")
   (add-commands)
   (guest/look-for-teletyped-repls))
+
+(defn serialize []
+  nil)
 
 ;; live-reload
 ;; calls stop before hotswapping code

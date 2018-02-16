@@ -8,5 +8,5 @@
 # For more detailed documentation see
 # https://atom.io/docs/latest/behind-atom-keymaps-in-depth
 'atom-workspace':
-  'ctrl-alt-o': 'clojure-repl:toggle'
-  'ctrl-alt-l': 'clojure-repl:execute-entered-text'
+  'ctrl-alt-o': 'clojure-repl:startRepl'
+  'ctrl-alt-l': 'clojure-repl:executeEnteredText'

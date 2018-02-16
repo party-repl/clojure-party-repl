@@ -37,7 +37,8 @@
     (.close connection (:session @repl-state) (fn []))
     (swap! repl-state assoc :connection nil)
     (swap! repl-state assoc :session nil)
-    (swap! repl-state assoc :port nil)))
+    (swap! repl-state assoc :port nil)
+    (swap! repl-state assoc :current-ns nil)))
 
 (defn handle-messages [id messages]
   (.log js/console "Handling messages...")
@@ -111,7 +112,6 @@
     (.send (:connection @repl-state) eval-options (fn [messages]
                                                       (try
                                                         (.log js/console (str "Receiving result from repl..."))
-                                                        (.log js/console messages)
                                                         (doseq [message messages]
                                                           (cond
                                                             (.-value message) (stdout-to-editor (.-value message))
@@ -119,7 +119,7 @@
                                                             (.-out message) (stdout-to-editor (.-out message))))
                                                         (catch js/Exception error
                                                           (.error js/console error)
-                                                          (.addrror (.-notifications js/atom) (str "Error sending to REPL: " error))))))))
+                                                          (.addError (.-notifications js/atom) (str "Error sending to REPL: " error))))))))
 
 (defn execute-code [code]
   (let [lein-process (:lein-process @repl-state)
@@ -128,34 +128,29 @@
       (stdout-to-editor code)
       (send-to-repl code))))
 
-(defn look-for-port [data]
-  (.log js/console "Looking for port...")
-  (let [data-string (.toString data)]
-    (.log js/console (str "Is there port info?... " data-string))
-    (if (nil? (:port @repl-state))
-        (when-let [match (re-find #"nREPL server started on port (\d+)" data-string)]
-          (.log js/console (str "Port found!!! " match))
-          (swap! repl-state assoc :port (second match))
-          (connect-nrepl)))
-    (stdout-to-editor data-string)))
+(defn look-for-port [data-string]
+  (if (nil? (:port @repl-state))
+    (when-let [match (re-find #"nREPL server started on port (\d+)" data-string)]
+      (.log js/console (str "Port found!!! " match " from " data-string))
+      (swap! repl-state assoc :port (second match))
+      (connect-nrepl))))
 
-(defn look-for-ns [data]
-  (.log js/console "Looking for ns...")
-  (let [data-string (.toString data)]
-    (.log js/console (str "Is there ns?... " data-string))
-    (if (nil? (:current-ns @repl-state))
-        (when-let [match (re-find #"(\S+)=>" data-string)]
-          (.log js/console (str "Namespace found!!! " match))
-          (swap! repl-state assoc :current-ns (second match))))
-    (stdout-to-editor data-string)))
+(defn look-for-ns [data-string]
+  (if (nil? (:current-ns @repl-state))
+    (when-let [match (re-find #"(\S+)=>" data-string)]
+      (.log js/console (str "Namespace found!!! " match " from " data-string))
+      (swap! repl-state assoc :current-ns (second match)))))
 
-(defn look-for-initial-repl-info [data]
-  (look-for-port data)
-  (look-for-ns data))
+(defn look-for-initial-repl-info [data-string]
+  (look-for-port data-string)
+  (look-for-ns data-string))
 
 (defn setup-process [lein-process]
   (.log js/console "Setting up process...")
-  (.on (.-stdout lein-process) "data" look-for-initial-repl-info)
+  (.on (.-stdout lein-process) "data" (fn [data]
+                                        (let [data-string (.toString data)]
+                                          (look-for-initial-repl-info data-string)
+                                          (stdout-to-editor data-string))))
   (.on (.-stderr lein-process) "data" (fn [data]
                                         (.log js/console (str "Stderr... " (.toString data)))))
   (.on lein-process "error" (fn [error]
@@ -166,15 +161,15 @@
   (.on lein-process "exit" (fn [code signal]
                              (.log js/console (str "Exiting repl... " code " " signal))
                              (swap! repl-state assoc :lein-process nil)))
-  (.on process "message" (fn [& {:keys [event text]}]
-                           (try
-                             (.log js/console (str "Message received... " event))
-                             (condp = event
-                               "input" (.write (.-stdin lein-process) text)
-                               "kill" (stop-process)
-                               :else)
-                             (catch js/Exception error
-                               (.error js/console error))))))
+  (comment (.on process "message" (fn [& {:keys [event text]}]
+                                   (try
+                                     (.log js/console (str "Message received... " event))
+                                     (condp = event
+                                       "input" (.write (.-stdin lein-process) text)
+                                       "kill" (stop-process)
+                                       :else)
+                                     (catch js/Exception error
+                                       (.error js/console error)))))))
 
 ;; TODO: Look for the project.clj file and decide which path to use
 (defn get-project-path []
@@ -200,7 +195,6 @@
     (doseq [k ["PWD" "ATOM_HOME" "ATOM_SHELL_INTERNAL_RUN_AS_NODE" "GOOGLE_API_KEY" "NODE_ENV" "NODE_PATH" "userAgent" "taskPath"]]
       (goog.object.remove env k))
     (goog.object.set env "PATH" (:lein-path @repl-state))
-    (.log js/console (str "PROCESS ENVIRONMENT: " (.-PATH env)))
     env))
 
 (defn start []

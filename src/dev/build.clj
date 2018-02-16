@@ -7,12 +7,14 @@
 (defn- plugin-setup []
   (-> (cljs/init-state)
       (cljs/set-build-options
-          {:node-global-prefix "global.atom_clojure_repl"})
+          {:node-global-prefix "global.clojure_repl"})
       (cljs/find-resources-in-classpath)
       (umd/create-module
         {:activate 'clojure-repl.core/activate
          :serialize 'clojure-repl.core/serialize
-         :deactivate 'clojure-repl.core/deactivate}
+         :deactivate 'clojure-repl.core/deactivate
+         :startRepl 'clojure-repl.core/start-repl
+         :executeEnteredText 'clojure-repl.core/execute-entered-text}
         {:output-to "plugin/lib/clojure-repl.js"})))
 
 (defn release []
