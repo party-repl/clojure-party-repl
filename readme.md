@@ -2,39 +2,68 @@
 
 Clojure REPL for Atom written in ClojureScript. Let's party! 😄
 
+
 ## Development
 
-If you want to export a function to atom for use with atom commands, make sure to add them to `dev/build.clj` like so:
-```
-:foo 'clojure-repl.core/foo
-:bar 'clojure-repl.core/bar
-```
+To make development easier with hot code reload and cljs repl, let's use shadow-cljs.
 
-## Compiling and running
-
-To compile me with a self-reloading loop, use:
+Install Shadow CLJS node package inside one of $PATH
 
 ```
-lein run -m build/dev-repl
+npm install shadow-cljs
 ```
 
-To compile me with a self-compiling loop but without live-reload:
+
+## Compiling, reloading and repling in
+
+1. Compile using one of the methods below
+
+To compile with a self-reloading loop with repl, use:
+
 ```
-lein run -m build/dev
+shadow-cljs watch app
 ```
 
-To compile me for release (`:simple` optimizations), use
+To compile without a self-reloading loop, use:
+
 ```
-lein run -m build/release
+shadow-cljs compile app
 ```
 
-After you have done that, go into the `plugin/` folder and run
+To compile for release (`:simple` optimizations), use
+```
+shadow-cljs release app
+```
+
+2. Repl into the running project
+
+From a different terminal, run:
+
+```
+$ shadow-cljs cljs-repl app
+```
+
+You can exit the repl by typing `:repl/quit`
+
+
+## Link the plugin to Atom
+
+After you have compiled the plugin, go into the `plugin/` folder and run
+
 ```
 apm install
 apm link
 ```
 
-clojure-repl should now be installed inside atom!
+You can now use clojure-repl plugin inside Atom as you develop it inside Atom!
+
+
+In order to export functions to be used as atom commands, add them to `:exports` inside `shadow-cljs.edn` like this:
+
+```
+:foo clojure-repl.core/foo
+:bar clojure-repl.core/bar
+```
 
 
 ## License

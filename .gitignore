@@ -14,3 +14,5 @@ plugin/node_modules
 .nrepl-*
 Clojure\ REPL\ Entry
 Clojure\ REPL\ History
+node_modules
+package.json

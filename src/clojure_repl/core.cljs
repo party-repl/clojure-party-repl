@@ -56,7 +56,7 @@
 (defn serialize []
   nil)
 
-;; live-reload
+;; For live-reload
 ;; calls stop before hotswapping code
 ;; then start after all code is loaded
 ;; the return value of stop will be the argument to start
