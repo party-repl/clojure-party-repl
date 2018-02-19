@@ -12,8 +12,7 @@
   (.setGrammar editor (.grammarForScopeName (.-grammars js/atom) "source.clojure")))
 
 (defn clear [editor]
-  (.setText editor "")
-  (.scrollToBottom editor))
+  (.setText editor ""))
 
 (defn execute [code]
   (local-repl/execute-code code))
@@ -59,6 +58,7 @@
                 (.setSoftWrapped editor true)
                 (.add (.-classList (.-editorElement editor)) "repl-history")
                 (set-grammar editor)
+                (.moveToBottom editor)
                 (swap! state assoc :host-output-editor editor)))))
 
 (defn create-input-editor []
@@ -76,3 +76,7 @@
                                                           (swap! state assoc :host-output-editor nil)
                                                           (local-repl/stop-process)
                                                           (dispose))))))))
+
+(defn create-editors []
+  (create-output-editor)
+  (create-input-editor))

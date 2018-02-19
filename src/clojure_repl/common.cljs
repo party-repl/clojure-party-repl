@@ -10,6 +10,7 @@
 (def execute-comment ";execute")
 
 ;; TODO: Support repl history
+
 (def state
   (atom {:subscriptions (CompositeDisposable.)
          :process nil
@@ -22,18 +23,15 @@
 (defn add-subscription [disposable]
   (.add (:subscriptions @state) disposable))
 
-;; TODO: Use pprint like this (with-out-str (pprint text))
-(defn stdout [editor text & without-newline]
-  (let [buffer (.getBuffer editor)]
-    (when without-newline
-      (.append buffer "\n\n" (clj->js {"undo" "skip"})))
-    (.append buffer text (clj->js {"undo" "skip"})))
-  (.scrollToBottom editor))
+(defn stdout [editor text & [without-newline]]
+  (.insertText editor text)
+  (when-not without-newline
+    (.insertNewlineBelow editor))
+  (.scrollToBottom editor)
+  (.moveToBottom editor))
 
 (defn insert-execute-comment [editor]
-  (let [last-row (.getLastBufferRow editor)]
-    (stdout editor execute-comment)
-    (.scrollToBottom editor)))
+  (stdout editor execute-comment true))
 
 (defn prepare-to-execute []
   (when-let [input-editor (.getActiveTextEditor (.-workspace js/atom))]

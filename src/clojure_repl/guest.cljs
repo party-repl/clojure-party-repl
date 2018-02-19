@@ -6,6 +6,10 @@
                                                     add-subscription
                                                     state]]))
 
+;; TODO: Fix the problem of attaching more than one subscription on 
+;;       the workspace inside `look-for-teletyped-repls`. When textEditors get
+;;       disposed, the subscription doesn't seem to get cleaned up right.
+
 (defn link-output-editor [editor]
   (when-not (:guest-output-editor @state)
     (swap! state assoc :guest-output-editor editor)

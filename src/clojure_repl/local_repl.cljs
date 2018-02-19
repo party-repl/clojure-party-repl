@@ -27,7 +27,7 @@
          :port nil
          :current-ns nil}))
 
-(defn stdout-to-editor [text & without-newline]
+(defn stdout-to-editor [text & [without-newline]]
   (when-let [editor (:host-output-editor @state)]
     (stdout editor text without-newline)))
 
@@ -125,6 +125,7 @@
   (let [lein-process (:lein-process @repl-state)
         connection (:connection @repl-state)]
     (when (and lein-process connection)
+      (stdout-to-editor (str (:current-ns @repl-state) "=> ") true)
       (stdout-to-editor code)
       (send-to-repl code))))
 

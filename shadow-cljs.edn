@@ -3,7 +3,6 @@
  :nrepl {:port 5555}
  :builds {:app {:target :node-library
                 :exports {:activate clojure-repl.core/activate
-                          :serialize clojure-repl.core/serialize
                           :deactivate clojure-repl.core/deactivate
                           :startRepl clojure-repl.core/start-repl
                           :executeEnteredText clojure-repl.core/execute-entered-text}
