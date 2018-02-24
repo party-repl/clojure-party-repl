@@ -5,24 +5,13 @@
                                                     input-editor-title
                                                     execute-comment
                                                     add-subscription
-                                                    stdout
                                                     state]]))
 
 (defn set-grammar [editor]
   (.setGrammar editor (.grammarForScopeName (.-grammars js/atom) "source.clojure")))
 
-(defn clear [editor]
-  (.setText editor ""))
-
 (defn execute [code & [options]]
   (local-repl/execute-code code options))
-
-(defn execute-entered-text []
-  (let [input-editor (:host-input-editor @state)
-        input-buffer (.getBuffer input-editor)
-        input-text (replace (.getText input-buffer) execute-comment "")]
-    (execute input-text)
-    (clear input-editor)))
 
 ;; TODO: Support destroying multiple editors with a shared buffer.
 (defn close-editor [editor]

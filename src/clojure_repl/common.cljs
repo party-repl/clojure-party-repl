@@ -31,11 +31,3 @@
       (.insertNewlineBelow editor))
     (.scrollToBottom editor)
     (.moveToBottom editor)))
-
-(defn insert-execute-comment [editor]
-  (stdout editor execute-comment true))
-
-(defn prepare-to-execute []
-  (when-let [input-editor (.getActiveTextEditor (.-workspace js/atom))]
-    (when (= input-editor (:guest-input-editor @state))
-      (insert-execute-comment input-editor))))

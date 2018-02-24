@@ -34,10 +34,10 @@
   (.log js/console "Closing connection...")
   (when-let [connection (:connection @repl-state)]
     (.close connection (:session @repl-state) (fn []))
-    (swap! repl-state assoc :connection nil)
-    (swap! repl-state assoc :session nil)
-    (swap! repl-state assoc :port nil)
-    (swap! repl-state assoc :current-ns nil)))
+    (swap! repl-state assoc :connection nil
+                            :session nil
+                            :port nil
+                            :current-ns nil)))
 
 (defn handle-messages [id messages]
   (.log js/console "Handling messages...")
