@@ -28,8 +28,7 @@
          :current-ns nil}))
 
 (defn stdout-to-editor [text & [without-newline]]
-  (when-let [editor (:host-output-editor @state)]
-    (stdout editor text without-newline)))
+  (stdout (:host-output-editor @state) text without-newline))
 
 (defn close-connection []
   (.log js/console "Closing connection...")
@@ -52,8 +51,8 @@
       (when (.-out message)
         (stdout-to-editor (.-out message)))
       (when (.-value message)
-        (stdout-to-editor (str (:current-ns @repl-state) "=> ") true)
-        (stdout-to-editor (.-value message))))))
+        (stdout-to-editor (.-value message)))
+      (stdout-to-editor (str (:current-ns @repl-state) "=> ") true))))
 
 (defn connect-nrepl []
   (.log js/console "Connecting to nrepl...")
@@ -94,17 +93,18 @@
 (defn wrap-to-catch-exception [code]
    (str "(do
           (require '[clojure.repl :as repl])
-          (try"
+          (try "
             code
-            "(catch Throwable throwable
+            " (catch Throwable throwable
                (binding [*err* (new java.io.StringWriter)]
                  (repl/pst throwable)
                  (throw (Exception. (str *err*)))))))"))
 
-(defn send-to-repl [code & options]
-  (.log js/console (str "Sending code to repl... " code))
+(defn send-to-repl [code & [options]]
+  (.log js/console (str "Sending code to repl... " code " " (:ns options)))
   (let [current-ns (or (:ns options) (:current-ns @repl-state))
         wrapped-code (wrap-to-catch-exception code)
+        _ (.log js/console (str "Options is... " options))
         eval-options (clj->js {"op" "eval"
                                "code" wrapped-code
                                "ns" current-ns
@@ -121,13 +121,12 @@
                                                           (.error js/console error)
                                                           (.addError (.-notifications js/atom) (str "Error sending to REPL: " error))))))))
 
-(defn execute-code [code]
+(defn execute-code [code & [options]]
   (let [lein-process (:lein-process @repl-state)
         connection (:connection @repl-state)]
     (when (and lein-process connection)
-      (stdout-to-editor (str (:current-ns @repl-state) "=> ") true)
       (stdout-to-editor code)
-      (send-to-repl code))))
+      (send-to-repl code options))))
 
 (defn look-for-port [data-string]
   (if (nil? (:port @repl-state))
@@ -137,12 +136,11 @@
       (connect-nrepl))))
 
 (defn look-for-ns [data-string]
-  (if (nil? (:current-ns @repl-state))
-    (when-let [match (re-find #"(\S+)=>" data-string)]
-      (.log js/console (str "Namespace found!!! " match " from " data-string))
-      (swap! repl-state assoc :current-ns (second match)))))
+  (when-let [match (re-find #"(\S+)=>" data-string)]
+    (.log js/console (str "Namespace found!!! " match " from " data-string))
+    (swap! repl-state assoc :current-ns (second match))))
 
-(defn look-for-initial-repl-info [data-string]
+(defn look-for-repl-info [data-string]
   (look-for-port data-string)
   (look-for-ns data-string))
 
@@ -150,7 +148,7 @@
   (.log js/console "Setting up process...")
   (.on (.-stdout lein-process) "data" (fn [data]
                                         (let [data-string (.toString data)]
-                                          (look-for-initial-repl-info data-string)
+                                          (look-for-repl-info data-string)
                                           (stdout-to-editor data-string))))
   (.on (.-stderr lein-process) "data" (fn [data]
                                         (.log js/console (str "Stderr... " (.toString data)))))
@@ -172,7 +170,8 @@
                                      (catch js/Exception error
                                        (.error js/console error)))))))
 
-;; TODO: Look for the project.clj file and decide which path to use
+;; TODO: Look for the project.clj file and decide which path to use.
+;; TODO: Warn user when project.clj doesn't exist in the project.
 (defn get-project-path []
   (first (.getPaths (.-project js/atom))))
 

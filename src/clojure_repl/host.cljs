@@ -14,21 +14,15 @@
 (defn clear [editor]
   (.setText editor ""))
 
-(defn execute [code]
-  (local-repl/execute-code code))
+(defn execute [code & [options]]
+  (local-repl/execute-code code options))
 
 (defn execute-entered-text []
   (let [input-editor (:host-input-editor @state)
         input-buffer (.getBuffer input-editor)
-        last-text (.getLastLine input-buffer)]
-    (when (ends-with? (trim last-text) execute-comment)
-      (let [output-editor (:host-output-editor @state)
-            input-text (replace (.getText input-buffer) execute-comment "")]
-        (execute input-text)
-        (clear input-editor)))))
-
-(defn execute-selected-text [])
-(defn execute-block [& {:keys [top-level] :as options}])
+        input-text (replace (.getText input-buffer) execute-comment "")]
+    (execute input-text)
+    (clear input-editor)))
 
 ;; TODO: Support destroying multiple editors with a shared buffer.
 (defn close-editor [editor]
@@ -50,6 +44,7 @@
   (doseq [disposable (:disposables @state)]
     (.dispose disposable)))
 
+;; TODO: Ignore any key commands inside the output-editor
 (defn create-output-editor []
   (-> (.-workspace js/atom)
       (.open output-editor-title (clj->js {"split" "right"}))
@@ -70,7 +65,12 @@
                 (.add (.-classList (.-editorElement editor)) "repl-entry")
                 (set-grammar editor)
                 (swap! state assoc :host-input-editor editor)
-                (add-subscription (.onDidStopChanging editor execute-entered-text))
+                (add-subscription (.onDidStopChanging editor (fn [event]
+                                                               (let [input-editor (:host-input-editor @state)
+                                                                     input-buffer (.getBuffer input-editor)
+                                                                     last-text (.getLastLine input-buffer)]
+                                                                 (when (ends-with? (trim last-text) execute-comment)
+                                                                   (execute-entered-text))))))
                 (add-subscription (.onDidDestroy editor (fn [event]
                                                           (close-editor (:host-output-editor @state))
                                                           (swap! state assoc :host-output-editor nil)

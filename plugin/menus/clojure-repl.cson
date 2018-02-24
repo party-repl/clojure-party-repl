@@ -7,7 +7,7 @@
     },
     {
       'label': 'Execute clojure-repl'
-      'command': 'clojure-repl:executeEnteredText'
+      'command': 'clojure-repl:sendToRepl'
     }
   ]
 'menu': [
@@ -22,7 +22,7 @@
         },
         {
           'label': 'Execute'
-          'command': 'clojure-repl:executeEnteredText'
+          'command': 'clojure-repl:sendToRepl'
         }
       ]
     ]

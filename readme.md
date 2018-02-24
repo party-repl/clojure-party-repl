@@ -1,6 +1,6 @@
 # clojure-repl
 
-Clojure REPL for Atom written in ClojureScript. Let's party! 😄
+Clojure REPL for Atom written in ClojureScript with full Teletype support. Let's party! 😄
 
 
 ## Development

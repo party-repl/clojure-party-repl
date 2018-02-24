@@ -24,17 +24,18 @@
   (.add (:subscriptions @state) disposable))
 
 (defn stdout [editor text & [without-newline]]
-  (.insertText editor text)
-  (when-not without-newline
-    (.insertNewlineBelow editor))
-  (.scrollToBottom editor)
-  (.moveToBottom editor))
+  (when editor
+    (.moveToBottom editor)
+    (.insertText editor text)
+    (when-not without-newline
+      (.insertNewlineBelow editor))
+    (.scrollToBottom editor)
+    (.moveToBottom editor)))
 
 (defn insert-execute-comment [editor]
   (stdout editor execute-comment true))
 
 (defn prepare-to-execute []
   (when-let [input-editor (.getActiveTextEditor (.-workspace js/atom))]
-    (when (or (= input-editor (:host-input-editor @state))
-              (= input-editor (:guest-input-editor @state)))
+    (when (= input-editor (:guest-input-editor @state))
       (insert-execute-comment input-editor))))
