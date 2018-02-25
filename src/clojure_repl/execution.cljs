@@ -1,12 +1,15 @@
 (ns clojure-repl.execution
   (:require [clojure.string :as string]
             [cljs.nodejs :as node]
-            [clojure-repl.host :as host]
+            [clojure-repl.local-repl :as local-repl]
             [clojure-repl.common :as common :refer [execute-comment
                                                     stdout
                                                     console-log]]))
 
 (def ashell (node/require "atom"))
+
+(defn execute [code & [options]]
+  (local-repl/execute-code code options))
 
 (defn inside-string-or-comment? [editor position]
   (let [scopes (.-scopes (.scopeDescriptorForBufferPosition editor position))]
@@ -41,7 +44,7 @@
 (defn execute-selected-text [editor]
   (let [selected-range (.getSelectedBufferRange editor)
         namespace (find-namespace-for-range editor selected-range)]
-    (host/execute (.getSelectedText editor) (when namespace {:ns namespace}))))
+    (execute (.getSelectedText editor) (when namespace {:ns namespace}))))
 
 (defn find-range-with-cursor [ranges cursor]
   (some #(when (.containsPoint % cursor)
@@ -78,12 +81,12 @@
     (when-let [range (find-range-with-cursor ranges cursor)]
       (let [namespace (find-namespace-for-range editor range)
             code (string/trim (.getTextInBufferRange editor range))]
-        (host/execute code (when namespace {:ns namespace}))))))
+        (execute code (when namespace {:ns namespace}))))))
 
 (defn execute-entered-text [editor]
   (let [buffer (.getBuffer editor)
         code (string/replace (.getText buffer) execute-comment "")]
-    (host/execute code)
+    (execute code)
     (.setText editor "")))
 
 (defn prepare-to-execute [editor]
