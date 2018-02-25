@@ -28,18 +28,21 @@
   (-> (.-workspace js/atom)
       (.open output-editor-title (clj->js {"split" "right"}))
       (.then (fn [editor]
-                (.isModified editor false)
+                (set! (.-isModified editor) (fn [] false))
+                (set! (.-isModified (.getBuffer editor)) (fn [] false))
                 (.setSoftWrapped editor true)
                 (.add (.-classList (.-editorElement editor)) "repl-history")
                 (set-grammar editor)
                 (.moveToBottom editor)
                 (swap! state assoc :host-output-editor editor)))))
 
+;; TODO: Set a placeholder text to notify user when repl is ready.
 (defn create-input-editor []
   (-> (.-workspace js/atom)
       (.open input-editor-title (clj->js {"split" "down"}))
       (.then (fn [editor]
-                (.isModified editor false)
+                (set! (.-isModified editor) (fn [] false))
+                (set! (.-isModified (.getBuffer editor)) (fn [] false))
                 (.setSoftWrapped editor true)
                 (.add (.-classList (.-editorElement editor)) "repl-entry")
                 (set-grammar editor)

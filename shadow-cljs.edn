@@ -5,7 +5,8 @@
                 :exports {:activate clojure-repl.core/activate
                           :deactivate clojure-repl.core/deactivate
                           :startRepl clojure-repl.core/start-repl
-                          :sendToRepl clojure-repl.core/send-to-repl}
+                          :sendToRepl clojure-repl.core/send-to-repl
+                          :consumeAutosave clojure-repl.core/consume-autosave}
                 :output-to "plugin/lib/clojure-repl.js"
                 :devtools {:before-load clojure-repl.core/stop
                            :after-load clojure-repl.core/start}}}}

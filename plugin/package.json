@@ -12,5 +12,12 @@
   },
   "dependencies": {
     "nrepl-client": ">=0.2.3"
+  },
+  "consumedServices": {
+    "autosave": {
+      "versions": {
+        "1.0.0": "consumeAutosave"
+      }
+    }
   }
 }

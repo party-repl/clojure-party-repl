@@ -37,6 +37,17 @@
   (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:startRepl" start-repl))
   (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:sendToRepl" send-to-repl)))
 
+(defn consume-autosave
+  "This is used by Atom's Autosave package's Service API to prevent certain
+  items from getting autosaved into project."
+  [m]
+  (let [dont-save-if (get (js->clj m) "dontSaveIf")]
+    (dont-save-if (fn [pane-item]
+                    (condp #(string/ends-with? %2 %1) (.getPath pane-item)
+                      common/output-editor-title true
+                      common/input-editor-title true
+                      false)))))
+
 (defn activate []
   (console-log "Activating clojure-repl...")
   (add-commands)
