@@ -20,8 +20,22 @@
          :guest-output-editor nil
          :history []}))
 
+(defn console-log [& texts]
+  (.log js/console (apply str texts)))
+
 (defn add-subscription [disposable]
   (.add (:subscriptions @state) disposable))
+
+;; TODO: Support destroying multiple editors with a shared buffer.
+(defn close-editor [editor]
+  (doseq [pane (.getPanes (.-workspace js/atom))]
+    (when (some #(= editor %) (.getItems pane))
+      (.destroyItem pane editor))))
+
+(defn destroy-editor [editor-keyword]
+  (when (some? (editor-keyword @state))
+    (close-editor (editor-keyword @state))
+    (swap! state assoc editor-keyword nil)))
 
 (defn stdout [editor text & [without-newline]]
   (when editor

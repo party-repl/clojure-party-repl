@@ -2,7 +2,9 @@
   (:require [clojure.string :as string]
             [cljs.nodejs :as node]
             [clojure-repl.host :as host]
-            [clojure-repl.common :as common :refer [execute-comment stdout]]))
+            [clojure-repl.common :as common :refer [execute-comment
+                                                    stdout
+                                                    console-log]]))
 
 (def ashell (node/require "atom"))
 
@@ -21,7 +23,7 @@
                                          (when-not (inside-string-or-comment? editor (.-start (.-range result)))
                                            (let [match-string (str (second (.-match result)))]
                                              (swap! ranges conj [(.-start (.-range result)) match-string])))))
-    (.log js/console (str "Namespaces " @ranges))
+    (console-log "Namespaces " @ranges)
     @ranges))
 
 ;; TODO: Warn user if the namespace isn't declared in the repl. Currently,
@@ -31,7 +33,7 @@
   (let [search-range ((.-Range ashell) 0 (.-start range))
         namespaces (find-all-namespace-declarations editor search-range)]
     (some (fn [[point namespace]]
-            (.log js/console (str "Namespace " namespace " " (.isGreaterThan (.-start range) point)))
+            (console-log "Namespace " namespace " " (.isGreaterThan (.-start range) point))
             (when (.isGreaterThan (.-start range) point)
               namespace))
           namespaces)))

@@ -4,9 +4,11 @@
                                                     input-editor-title
                                                     execute-comment
                                                     add-subscription
-                                                    state]]))
+                                                    destroy-editor
+                                                    state
+                                                    console-log]]))
 
-;; TODO: Fix the problem of attaching more than one subscription on 
+;; TODO: Fix the problem of attaching more than one subscription on
 ;;       the workspace inside `look-for-teletyped-repls`. When textEditors get
 ;;       disposed, the subscription doesn't seem to get cleaned up right.
 
@@ -21,16 +23,23 @@
     (add-subscription (.onDidDestroy editor #(swap! state assoc :guest-input-editor nil)))))
 
 (defn look-for-teletyped-repls []
-  (add-subscription (.onDidAddTextEditor (.-workspace js/atom) (fn [event]
-                                                                 (let [editor (.-textEditor event)
-                                                                       title (.getTitle editor)]
-                                                                   (.log js/console (str "Guest Repl? " title))
-                                                                   (condp #(ends-with? %2 %1) title
-                                                                     output-editor-title (link-output-editor editor)
-                                                                     input-editor-title (link-input-editor editor)
-                                                                     (.log js/console "No matching repl...")))))))
+  (-> (.-workspace js/atom)
+      (.onDidAddTextEditor (fn [event]
+                             (let [editor (.-textEditor event)
+                                   title (.getTitle editor)]
+                               (console-log "Guest Repl? " title)
+                               (condp #(and (not= %2 %1) (ends-with? %2 %1)) title
+                                 output-editor-title (link-output-editor editor)
+                                 input-editor-title (link-input-editor editor)
+                                 (console-log "No matching repl...")))))
+      (add-subscription)))
+
+(defn destroy-editors []
+  (destroy-editor :guest-output-editor)
+  (destroy-editor :guest-input-editor))
 
 (defn dispose []
+  (destroy-editors)
   (.dispose (:subscriptions @state))
   (doseq [disposable (:disposables @state)]
     (.dispose disposable)))

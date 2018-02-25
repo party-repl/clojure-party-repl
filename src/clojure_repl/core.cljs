@@ -1,7 +1,7 @@
 (ns clojure-repl.core
   (:require [clojure.string :as string]
             [cljs.nodejs :as node]
-            [clojure-repl.common :as common :refer [state]]
+            [clojure-repl.common :as common :refer [state console-log]]
             [clojure-repl.host :as host]
             [clojure-repl.guest :as guest]
             [clojure-repl.local-repl :as local-repl]
@@ -21,7 +21,7 @@
 (def subscriptions (CompositeDisposable.))
 
 (defn start-repl []
-  (.log js/console "clojure-repl started!")
+  (console-log "clojure-repl started!")
   (host/create-editors)
   (local-repl/start))
 
@@ -38,12 +38,12 @@
   (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:sendToRepl" send-to-repl)))
 
 (defn activate []
-  (.log js/console "Activating clojure-repl...")
+  (console-log "Activating clojure-repl...")
   (add-commands)
   (guest/look-for-teletyped-repls))
 
 (defn deactivate []
-    (.log js/console "Deactivating clojure-repl...")
+    (console-log "Deactivating clojure-repl...")
     (host/dispose)
     (guest/dispose)
     (doseq [disposable @disposables]

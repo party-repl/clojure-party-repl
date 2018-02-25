@@ -5,6 +5,8 @@
                                                     input-editor-title
                                                     execute-comment
                                                     add-subscription
+                                                    close-editor
+                                                    destroy-editor
                                                     state]]))
 
 (defn set-grammar [editor]
@@ -13,19 +15,9 @@
 (defn execute [code & [options]]
   (local-repl/execute-code code options))
 
-;; TODO: Support destroying multiple editors with a shared buffer.
-(defn close-editor [editor]
-  (doseq [pane (.getPanes (.-workspace js/atom))]
-    (when (some #(= editor %) (.getItems pane))
-      (.destroyItem pane editor))))
-
 (defn destroy-editors []
-  (when (some? (:host-output-editor @state))
-    (close-editor (:host-output-editor @state))
-    (swap! state assoc :host-output-editor nil))
-  (when (some? (:host-input-editor @state))
-    (close-editor (:host-input-editor @state))
-    (swap! state assoc :host-input-editor nil)))
+  (destroy-editor :host-output-editor)
+  (destroy-editor :host-input-editor))
 
 (defn dispose []
   (destroy-editors)

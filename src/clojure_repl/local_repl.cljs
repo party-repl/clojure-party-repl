@@ -2,7 +2,8 @@
   (:require [cljs.nodejs :as node]
             [clojure.string :as string]
             [clojure-repl.common :as common :refer [state
-                                                    stdout]]))
+                                                    stdout
+                                                    console-log]]))
 
 ;; TODO: Switch to unRepl
 ;; TODO: Support having multiple REPLs
@@ -31,7 +32,7 @@
   (stdout (:host-output-editor @state) text without-newline))
 
 (defn close-connection []
-  (.log js/console "Closing connection...")
+  (console-log "Closing connection...")
   (when-let [connection (:connection @repl-state)]
     (.close connection (:session @repl-state) (fn []))
     (swap! repl-state assoc :connection nil
@@ -40,22 +41,24 @@
                             :current-ns nil)))
 
 (defn handle-messages [id messages]
-  (.log js/console "Handling messages...")
+  (console-log "Handling messages...")
   (doseq [message messages]
-    (.log js/console (str "!!! Message sequence arrived !!! " id " " (.-out message) " " (.-value message) " " (.-err message)))
-    (when (.-err message)
-      (stdout-to-editor (.-err message)))
-    (when (and (.-ns message) (= (.-session message) (:session @repl-state)))
-      (.log js/console (str "Message arrived with ns: " (.-ns message)))
-      (swap! repl-state assoc :current-ns (.-ns message))
-      (when (.-out message)
-        (stdout-to-editor (.-out message)))
-      (when (.-value message)
-        (stdout-to-editor (.-value message)))
-      (stdout-to-editor (str (:current-ns @repl-state) "=> ") true))))
+    (console-log "!!! Message sequence arrived !!! " id " " (.-out message) " " (.-value message) " " (.-err message))
+    (if (.-err message)
+      (do
+        (stdout-to-editor (.-err message))
+        (stdout-to-editor (str (:current-ns @repl-state) "=> ") true))
+      (when (and (.-ns message) (= (.-session message) (:session @repl-state)))
+        (console-log "Message arrived with ns: " (.-ns message))
+        (swap! repl-state assoc :current-ns (.-ns message))
+        (when (.-out message)
+          (stdout-to-editor (.-out message)))
+        (when (.-value message)
+          (stdout-to-editor (.-value message)))
+        (stdout-to-editor (str (:current-ns @repl-state) "=> ") true)))))
 
 (defn connect-nrepl []
-  (.log js/console "Connecting to nrepl...")
+  (console-log "Connecting to nrepl...")
   (when (:connection @repl-state)
     (close-connection))
   (let [connection (.connect nrepl (clj->js {"host" (:host @repl-state)
@@ -63,15 +66,15 @@
                                              "verbose" false}))]
     (swap! repl-state assoc :connection connection)
     (.on connection "error" (fn [err]
-                              (.log js/console (str "clojure-repl: connection error " err))
+                              (console-log "clojure-repl: connection error " err)
                               (swap! repl-state assoc :connection nil)))
     (.once connection "connect" (fn []
-                                  (.log js/console "!!!Connected to nrepl!!!")
+                                  (console-log "!!!Connected to nrepl!!!")
                                   (.on connection "finish" (fn []
-                                                             (.log js/console "Connection finished...")
+                                                             (console-log "Connection finished...")
                                                              (swap! repl-state assoc :connection nil)))
                                   (.clone connection (fn [err, message]
-                                                       (.log js/console (str "Getting session from connection..." (js->clj message)))
+                                                       (console-log "Getting session from connection..." (js->clj message))
                                                        (swap! repl-state assoc :session (get-in (js->clj message) [0 "new-session"]))
                                                        (.on (.-messageStream connection) "messageSequence" handle-messages)))))))
 
@@ -81,7 +84,7 @@
     (when connection
       (close-connection))
     (when lein-process
-      (.log js/console (str "Killing process... " (.-pid lein-process)))
+      (console-log "Killing process... " (.-pid lein-process))
       (.removeAllListeners lein-process)
       (.removeAllListeners (.-stdout lein-process))
       (.removeAllListeners (.-stderr lein-process))
@@ -101,17 +104,16 @@
                  (throw (Exception. (str *err*)))))))"))
 
 (defn send-to-repl [code & [options]]
-  (.log js/console (str "Sending code to repl... " code " " (:ns options)))
+  (console-log "Sending code to repl... " code " as " (:ns options))
   (let [current-ns (or (:ns options) (:current-ns @repl-state))
         wrapped-code (wrap-to-catch-exception code)
-        _ (.log js/console (str "Options is... " options))
         eval-options (clj->js {"op" "eval"
                                "code" wrapped-code
                                "ns" current-ns
                                "session" (:session @repl-state)})]
     (.send (:connection @repl-state) eval-options (fn [messages]
                                                       (try
-                                                        (.log js/console (str "Receiving result from repl..."))
+                                                        (console-log "Receiving result from repl...")
                                                         (doseq [message messages]
                                                           (cond
                                                             (.-value message) (stdout-to-editor (.-value message))
@@ -131,13 +133,13 @@
 (defn look-for-port [data-string]
   (if (nil? (:port @repl-state))
     (when-let [match (re-find #"nREPL server started on port (\d+)" data-string)]
-      (.log js/console (str "Port found!!! " match " from " data-string))
+      (console-log "Port found!!! " match " from " data-string)
       (swap! repl-state assoc :port (second match))
       (connect-nrepl))))
 
 (defn look-for-ns [data-string]
   (when-let [match (re-find #"(\S+)=>" data-string)]
-    (.log js/console (str "Namespace found!!! " match " from " data-string))
+    (console-log "Namespace found!!! " match " from " data-string)
     (swap! repl-state assoc :current-ns (second match))))
 
 (defn look-for-repl-info [data-string]
@@ -145,24 +147,24 @@
   (look-for-ns data-string))
 
 (defn setup-process [lein-process]
-  (.log js/console "Setting up process...")
+  (console-log "Setting up process...")
   (.on (.-stdout lein-process) "data" (fn [data]
                                         (let [data-string (.toString data)]
                                           (look-for-repl-info data-string)
                                           (stdout-to-editor data-string))))
   (.on (.-stderr lein-process) "data" (fn [data]
-                                        (.log js/console (str "Stderr... " (.toString data)))))
+                                        (console-log "Stderr... " (.toString data))))
   (.on lein-process "error" (fn [error]
                               (stdout-to-editor (str "Error starting repl: " error))))
   (.on lein-process "close" (fn [code]
-                              (.log js/console (str "Closing process... " code))
+                              (console-log "Closing process... " code)
                               (stop-process)))
   (.on lein-process "exit" (fn [code signal]
-                             (.log js/console (str "Exiting repl... " code " " signal))
+                             (console-log "Exiting repl... " code " " signal)
                              (swap! repl-state assoc :lein-process nil)))
   (comment (.on process "message" (fn [& {:keys [event text]}]
                                    (try
-                                     (.log js/console (str "Message received... " event))
+                                     (console-log "Message received... " event)
                                      (condp = event
                                        "input" (.write (.-stdin lein-process) text)
                                        "kill" (stop-process)
@@ -176,11 +178,11 @@
   (first (.getPaths (.-project js/atom))))
 
 (defn get-project-clj [project-path]
-  (.log js/console (str "Looking for project.clj at " project-path + "/project.clj"))
+  (console-log "Looking for project.clj at " project-path "/project.clj")
   (.existsSync fs (str project-path + "/project.clj")))
 
 (defn start-lein-process [env & args]
-  (.log js/console "Starting lein process...")
+  (console-log "Starting lein process...")
   (let [project-path (get-project-path)
         process-env (clj->js {"cwd" project-path
                               "env" (goog.object.set env "PWD" project-path)})
