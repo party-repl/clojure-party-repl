@@ -3,7 +3,7 @@
             [cljs.nodejs :as node]
             [clojure-repl.local-repl :as local-repl]
             [clojure-repl.common :as common :refer [execute-comment
-                                                    stdout
+                                                    append-to-editor
                                                     console-log]]))
 
 (def ashell (node/require "atom"))
@@ -11,13 +11,19 @@
 (defn execute [code & [options]]
   (local-repl/execute-code code options))
 
-(defn inside-string-or-comment? [editor position]
+(defn inside-string-or-comment?
+  "Checks if the buffer position is inside the scope of string, comment, or
+  regex."
+  [editor position]
   (let [scopes (.-scopes (.scopeDescriptorForBufferPosition editor position))]
     (or (>= (.indexOf scopes "string.quoted.double.clojure") 0)
         (>= (.indexOf scopes "comment.line.semicolon.clojure") 0)
         (>= (.indexOf scopes "string.regexp.clojure") 0))))
 
-(defn find-all-namespace-declarations [editor range]
+(defn find-all-namespace-declarations
+  "Searches through the entire buffer for all namespace declarations and
+  collects the ranges."
+  [editor range]
   (let [ranges (atom [])
         regex (js/RegExp. "\\s*\\(\\s*ns\\s*([A-Za-z\\*\\+\\!\\-\\_\\'\\?]?[A-Za-z0-9\\.\\*\\+\\!\\-\\_\\'\\?\\:]*)" "gm")]
     (.backwardsScanInBufferRange editor
@@ -30,9 +36,11 @@
     @ranges))
 
 ;; TODO: Warn user if the namespace isn't declared in the repl. Currently,
-;;       repl won't return any result when we send any code to repl with
-;;       namespace, which doesn't exist in the repl, as options.
-(defn find-namespace-for-range [editor range]
+;;       repl simply won't return any results when we send code to undeclared
+;;       namespaces.
+(defn find-namespace-for-range
+  "Finds a namespace where the code range is declared at."
+  [editor range]
   (let [search-range ((.-Range ashell) 0 (.-start range))
         namespaces (find-all-namespace-declarations editor search-range)]
     (some (fn [[point namespace]]
@@ -41,12 +49,16 @@
               namespace))
           namespaces)))
 
-(defn execute-selected-text [editor]
+(defn execute-selected-text
+  "Gets the selected text in the editor and sends it over to repl."
+  [editor]
   (let [selected-range (.getSelectedBufferRange editor)
         namespace (find-namespace-for-range editor selected-range)]
     (execute (.getSelectedText editor) (when namespace {:ns namespace}))))
 
-(defn find-range-with-cursor [ranges cursor]
+(defn find-range-with-cursor
+  "Searches for a range that cursor is located at."
+  [ranges cursor]
   (some #(when (.containsPoint % cursor)
            %)
         ranges))
@@ -54,7 +66,9 @@
 (def open-parans #{"(" "[" "{"})
 (def close-parans #{")" "]" "}"})
 
-(defn get-all-top-level-ranges [editor]
+(defn get-all-top-level-ranges
+  "Collects all the ranges of top level forms in the editor."
+  [editor]
   (let [ranges (atom [])
         paran-count (atom 0)
         regex (js/RegExp. "[\\{\\}\\[\\]\\(\\)]" "gm")]
@@ -75,7 +89,10 @@
     (swap! ranges (partial map #(apply (.-Range ashell) %)))
     @ranges))
 
-(defn execute-top-level-form [editor]
+(defn execute-top-level-form
+  "Gets the range of the top level form where the cursor is located at and sends
+  the text over to repl."
+  [editor]
   (let [ranges (get-all-top-level-ranges editor)
         cursor (.getCursorBufferPosition editor)]
     (when-let [range (find-range-with-cursor ranges cursor)]
@@ -83,11 +100,16 @@
             code (string/trim (.getTextInBufferRange editor range))]
         (execute code (when namespace {:ns namespace}))))))
 
-(defn execute-entered-text [editor]
+(defn execute-entered-text
+  "Gets the text in the input editor and sends it over to repl."
+  [editor]
   (let [buffer (.getBuffer editor)
         code (string/replace (.getText buffer) execute-comment "")]
     (execute code)
     (.setText editor "")))
 
-(defn prepare-to-execute [editor]
-  (stdout editor execute-comment true))
+(defn prepare-to-execute
+  "The execute-comment is entered, only by the guest side, to signal the host
+  side to execute the code."
+  [editor]
+  (append-to-editor editor execute-comment :add-newline? false))

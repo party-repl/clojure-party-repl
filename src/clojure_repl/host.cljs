@@ -10,10 +10,16 @@
                                                     destroy-editor
                                                     state]]))
 
-(defn set-grammar [editor]
+;; TODO: Combine the output editor and input editor into a single paneItem.
+
+(defn set-grammar
+  "Sets the grammer of the editor as Clojure."
+  [editor]
   (.setGrammar editor (.grammarForScopeName (.-grammars js/atom) "source.clojure")))
 
-(defn destroy-editors []
+(defn destroy-editors
+  "Destroys both output and input editors."
+  []
   (destroy-editor :host-output-editor)
   (destroy-editor :host-input-editor))
 
@@ -24,7 +30,9 @@
     (.dispose disposable)))
 
 ;; TODO: Ignore any key commands inside the output-editor
-(defn create-output-editor []
+(defn create-output-editor
+  "Opens a text editor for displaying repl outputs."
+  []
   (-> (.-workspace js/atom)
       (.open output-editor-title (clj->js {"split" "right"}))
       (.then (fn [editor]
@@ -34,10 +42,18 @@
                 (.add (.-classList (.-editorElement editor)) "repl-history")
                 (set-grammar editor)
                 (.moveToBottom editor)
-                (swap! state assoc :host-output-editor editor)))))
+                (swap! state assoc :host-output-editor editor)
+                (add-subscription (.onDidDestroy editor (fn [event]
+                                                          (swap! state assoc :host-output-editor nil)
+                                                          (local-repl/stop-process)
+                                                          (dispose))))))))
 
 ;; TODO: Set a placeholder text to notify user when repl is ready.
-(defn create-input-editor []
+(defn create-input-editor
+  "Opens a text editor for simulating repl's entry area. Adds a listener
+  onDidStopChanging to look for execute-comment entered by guest side using
+  teletype in the entry, so that it can detect when to execute the code."
+  []
   (-> (.-workspace js/atom)
       (.open input-editor-title (clj->js {"split" "down"}))
       (.then (fn [editor]
@@ -48,18 +64,16 @@
                 (set-grammar editor)
                 (swap! state assoc :host-input-editor editor)
                 (add-subscription (.onDidStopChanging editor (fn [event]
-                                                               (let [input-editor (:host-input-editor @state)
-                                                                     input-buffer (.getBuffer input-editor)
-                                                                     last-text (.getLastLine input-buffer)]
+                                                               (let [buffer (.getBuffer editor)
+                                                                     last-text (.getLastLine buffer)]
                                                                  (when (ends-with? (trim last-text) execute-comment)
                                                                    (execution/execute-entered-text editor))))))
                 (add-subscription (.onDidDestroy editor (fn [event]
-                                                          (close-editor (:host-output-editor @state))
-                                                          (swap! state assoc :host-output-editor nil)
-                                                          (swap! state assoc :host-inputput-editor nil)
+                                                          (swap! state assoc :host-input-editor nil)
                                                           (local-repl/stop-process)
                                                           (dispose))))))))
 
+;; TODO: Make sure to create input editor after output editor has been created.
 (defn create-editors []
   (create-output-editor)
   (create-input-editor))

@@ -7,25 +7,25 @@
             [clojure-repl.local-repl :as local-repl]
             [clojure-repl.execution :as execution]))
 
-;; TODO: Prevent Atom from auto-saving the two REPL tabs inside project directory
-
 (def ashell (node/require "atom"))
-
 (def commands (.-commands js/atom))
-
 (def CompositeDisposable (.-CompositeDisposable ashell))
 
 ;; TODO: Merge with the common/state
 (def disposables (atom []))
 
-(def subscriptions (CompositeDisposable.))
-
-(defn start-repl []
+(defn start-repl
+  "This is exported as one of the plugin commands."
+  []
   (console-log "clojure-repl started!")
   (host/create-editors)
   (local-repl/start))
 
-(defn send-to-repl []
+(defn send-to-repl
+  "This is exported as one of the plugin commands.
+  When the command is triggered, it grabs appropriate text to be sent to a repl
+  depending on the context."
+  []
   (let [editor (.getActiveTextEditor (.-workspace js/atom))]
     (cond
       (= editor (:guest-input-editor @state)) (execution/prepare-to-execute editor)
@@ -38,8 +38,8 @@
   (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:sendToRepl" send-to-repl)))
 
 (defn consume-autosave
-  "This is used by Atom's Autosave package's Service API to prevent certain
-  items from getting autosaved into project."
+  "This consumes Services API provided by Atom's Autosave package to prevent
+  certain items from getting autosaved into project."
   [m]
   (let [dont-save-if (get (js->clj m) "dontSaveIf")]
     (dont-save-if (fn [pane-item]
@@ -54,14 +54,18 @@
   (guest/look-for-teletyped-repls))
 
 (defn deactivate []
-    (console-log "Deactivating clojure-repl...")
-    (host/dispose)
-    (guest/dispose)
-    (doseq [disposable @disposables]
-      (.dispose disposable)))
+  (console-log "Deactivating clojure-repl...")
+  (host/dispose)
+  (guest/dispose)
+  (doseq [disposable @disposables]
+    (.dispose disposable)))
 
-(defn start []
+(defn start
+  "Used for development."
+  []
   (activate))
 
-(defn stop []
+(defn stop
+  "Used for development."
+  []
   (deactivate))
