@@ -9,4 +9,4 @@
                  [org.clojure/core.async "0.4.474"]]
 
   :source-paths ["src"]
-  :profiles {:dev {:dependencies [[thheller/shadow-cljs "2.1.16"]]}})
+  :profiles {:dev {:dependencies [[thheller/shadow-cljs "2.2.3"]]}})

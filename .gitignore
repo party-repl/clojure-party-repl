@@ -10,6 +10,7 @@ plugin/node_modules
 .lein-deps-sum
 .lein-repl-history
 .lein-plugins/
+.shadow-cljs
 .repl
 .nrepl-*
 Clojure\ REPL\ Entry

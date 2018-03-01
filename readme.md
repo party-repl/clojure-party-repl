@@ -13,6 +13,7 @@ Install Shadow CLJS node package inside one of $PATH
 npm install shadow-cljs
 ```
 
+Also, open a test project in Dev Mode by clicking View -> Developer -> Open In Dev Mode. This allows Shadow CLJS to connect to Atom's JS runtime.
 
 ## Compiling, reloading and repling in
 
