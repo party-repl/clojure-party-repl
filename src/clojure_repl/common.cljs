@@ -9,7 +9,8 @@
 (def input-editor-title "Clojure REPL Entry")
 (def execute-comment ";execute")
 
-;; TODO: Support repl history.
+(def max-history-count 100)
+
 ;; TODO: Support having multiple repls for different projects.
 
 (def state
@@ -19,11 +20,12 @@
          :host-output-editor nil
          :guest-input-editor nil
          :guest-output-editor nil
-         :history []}))
+         :repl-history (list)
+         :current-history-index -1}))
 
 (defn console-log
   "Used for development. Text can be viewed in the Atom's Console when in Dev
-  Mode. To turn on Dev Mode, go to View -> Developer -> Open In Dev Mode."
+  Mode."
   [& text]
   (.log js/console (apply str text)))
 
@@ -32,6 +34,15 @@
   them later."
   [disposable]
   (.add (:subscriptions @state) disposable))
+
+(defn add-repl-history [code]
+  (when (= max-history-count (count (:repl-history @state)))
+    (swap! state update :repl-history butlast))
+  (swap! state update :repl-history #(conj % code))
+  (swap! state assoc :current-history-index -1))
+
+(defn show-current-history [editor]
+  (.setText editor (nth (:repl-history @state) (:current-history-index @state))))
 
 ;; TODO: Support destroying multiple editors with a shared buffer.
 (defn close-editor
@@ -48,6 +59,7 @@
     (close-editor (editor-keyword @state))
     (swap! state assoc editor-keyword nil)))
 
+;; TODO: Pretty print results
 (defn append-to-editor
   "Appends text at the end of the editor. Always append a newline following the
   text unless specified not to."

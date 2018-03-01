@@ -6,6 +6,8 @@
                           :deactivate clojure-repl.core/deactivate
                           :startRepl clojure-repl.core/start-repl
                           :sendToRepl clojure-repl.core/send-to-repl
+                          :showNewerHistory clojure-repl.core/show-newer-repl-history
+                          :showOlderHistory clojure-repl.core/show-older-repl-history
                           :consumeAutosave clojure-repl.core/consume-autosave}
                 :output-to "plugin/lib/clojure-repl.js"
                 :devtools {:before-load clojure-repl.core/stop

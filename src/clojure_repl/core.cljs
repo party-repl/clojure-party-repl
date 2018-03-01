@@ -33,9 +33,28 @@
       (.isEmpty (.getLastSelection editor)) (execution/execute-top-level-form editor)
       :else (execution/execute-selected-text editor))))
 
+(defn show-older-repl-history [event]
+  (let [editor (.getActiveTextEditor (.-workspace js/atom))]
+    (when (or (= editor (:guest-input-editor @state)) (= editor (:host-input-editor @state)))
+      (when (< (:current-history-index @state) (count (:repl-history @state)))
+        (swap! state update :current-history-index inc))
+      (when (> (count (:repl-history @state)) (:current-history-index @state))
+        (common/show-current-history editor)))))
+
+(defn show-newer-repl-history [event]
+  (let [editor (.getActiveTextEditor (.-workspace js/atom))]
+    (when (or (= editor (:guest-input-editor @state)) (= editor (:host-input-editor @state)))
+      (when (>= (:current-history-index @state) 0)
+        (swap! state update :current-history-index dec))
+      (if (> 0 (:current-history-index @state))
+        (.setText editor "")
+        (common/show-current-history editor)))))
+
 (defn add-commands []
   (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:startRepl" start-repl))
-  (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:sendToRepl" send-to-repl)))
+  (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:sendToRepl" send-to-repl))
+  (swap! disposables conj (.add commands "atom-text-editor.repl-entry" "clojure-repl:showNewerHistory" show-newer-repl-history))
+  (swap! disposables conj (.add commands "atom-text-editor.repl-entry" "clojure-repl:showOlderHistory" show-older-repl-history)))
 
 (defn consume-autosave
   "This consumes Services API provided by Atom's Autosave package to prevent

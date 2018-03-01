@@ -3,6 +3,7 @@
             [clojure.string :as string]
             [clojure-repl.common :as common :refer [state
                                                     append-to-editor
+                                                    add-repl-history
                                                     console-log]]))
 
 ;; TODO: Switch to unrepl
@@ -152,6 +153,7 @@
         connection (:connection @repl-state)]
     (when (and lein-process connection)
       (append-to-output-editor code)
+      (add-repl-history code)
       (send-to-repl code options))))
 
 (defn look-for-port

@@ -1,3 +1,7 @@
 'atom-workspace':
   'ctrl-alt-o': 'clojure-repl:startRepl'
   'cmd-enter': 'clojure-repl:sendToRepl'
+
+'atom-text-editor.repl-entry':
+    'cmd-up': 'clojure-repl:showOlderHistory'
+    'cmd-down': 'clojure-repl:showNewerHistory'
