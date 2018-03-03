@@ -2,7 +2,7 @@
 
 Clojure REPL for Atom written in ClojureScript with full Teletype support for pair programming. Let's party! 😄
 
-![Screenshot](readme.png | width=500)
+![Screenshot](readme.png)
 
 ## How to use this
 TODO
