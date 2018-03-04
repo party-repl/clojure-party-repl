@@ -15,6 +15,7 @@
 (def process (node/require "process"))
 (def child-process (node/require "child_process"))
 (def nrepl (node/require "nrepl-client"))
+(def net (node/require "net"))
 
 (def lein-exec (string/split "lein repl" #" "))
 
@@ -88,6 +89,9 @@
                                   (.clone connection (fn [err, message]
                                                        (console-log "Getting session from connection..." (js->clj message))
                                                        (swap! repl-state assoc :session (get-in (js->clj message) [0 "new-session"]))
+                                                       (when-let [init-code (:init-code @repl-state)]
+                                                         (swap! repl-state assoc :init-code nil)
+                                                         (send-to-repl init-code {}))
                                                        (.on (.-messageStream connection) "messageSequence" handle-messages)))))))
 
 (defn stop-process
@@ -98,7 +102,7 @@
         connection (:connection @repl-state)]
     (when connection
       (close-connection))
-    (when lein-process
+    (when-not (contains? #{:remote nil} lein-process)
       (console-log "Killing process... " (.-pid lein-process))
       (.removeAllListeners lein-process)
       (.removeAllListeners (.-stdout lein-process))
@@ -229,3 +233,12 @@
 (defn start []
   (stop-process)
   (start-lein-process (get-env)))
+
+(defn connect-existing [{:keys [host port]}]
+  (stop-process)
+  (swap! repl-state assoc :host host)
+  (swap! repl-state assoc :port port)
+  (swap! repl-state assoc :lein-process :remote)
+  (swap! repl-state assoc :current-ns "user")
+  (swap! repl-state assoc :init-code "(.name *ns*)")
+  (connect-to-nrepl))

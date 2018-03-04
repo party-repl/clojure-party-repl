@@ -21,6 +21,15 @@
   (host/create-editors)
   (local-repl/start))
 
+(defn connect-to-nrepl
+  "This is exported as one of the plugin commands. Connect to an existing nrepl
+  by host and port."
+  ([event]
+   (.log js/console "connect-to-nrepl startup event:" event)
+   (console-log "clojure-repl on the case!")
+   (host/create-editors)
+   (local-repl/connect-existing {:host "localhost" :port 12345})))
+
 (defn send-to-repl
   "This is exported as one of the plugin commands.
   When the command is triggered, it grabs appropriate text to be sent to a repl
@@ -52,6 +61,7 @@
 
 (defn add-commands []
   (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:startRepl" start-repl))
+  (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:connectToNrepl" connect-to-nrepl))
   (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:sendToRepl" send-to-repl))
   (swap! disposables conj (.add commands "atom-text-editor.repl-entry" "clojure-repl:showNewerHistory" show-newer-repl-history))
   (swap! disposables conj (.add commands "atom-text-editor.repl-entry" "clojure-repl:showOlderHistory" show-older-repl-history)))

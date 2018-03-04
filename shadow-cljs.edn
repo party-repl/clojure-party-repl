@@ -4,6 +4,7 @@
  :builds {:app {:target :node-library
                 :exports {:activate clojure-repl.core/activate
                           :deactivate clojure-repl.core/deactivate
+                          :connectToNrepl clojure-repl.core/connect-to-nrepl
                           :startRepl clojure-repl.core/start-repl
                           :sendToRepl clojure-repl.core/send-to-repl
                           :showNewerHistory clojure-repl.core/show-newer-repl-history
