@@ -2,7 +2,7 @@
   "name": "clojure-repl",
   "main": "./lib/clojure-repl",
   "version": "0.1.0",
-  "description": "Clojure/ClojureScript REPL for Atom",
+  "description": "Clojure REPL for Atom with Teletype support",
   "keywords": [
   ],
   "repository": "https://github.com/hitsusorisaku/clojure-repl",

@@ -1,7 +1,9 @@
-// The ui-variables file is provided by base themes provided by Atom.
-//
-// See https://github.com/atom/atom-dark-ui/blob/master/styles/ui-variables.less
-// for a full listing of what's available.
+/**
+ * The ui-variables file is provided by base themes provided by Atom.
+ *
+ * See https://github.com/atom/atom-dark-ui/blob/master/styles/ui-variables.less
+ * for a full listing of what's available.
+ */
 @import "ui-variables";
 
 .clojure-repl {
@@ -10,17 +12,27 @@
   width: 400px;
   font-size: @input-font-size;
   overflow: scroll;
+
   p {
     margin-left: 5px;
     white-space: pre;
   }
+
   button.node-repl-clear {
     position: absolute;
     right: 25px;
     z-index: 1;
   }
-  .node-repl-welcome-message { margin: 10px 0px; font-weight: bold; }
-  .run-header { font-weight: bold; }
+
+  .node-repl-welcome-message {
+    margin: 10px 0px;
+    font-weight: bold;
+  }
+
+  .run-header {
+    font-weight: bold;
+  }
+
   &__resizer {
     position: absolute;
     top: 0;
@@ -36,5 +48,5 @@
 }
 
 .repl-history {
-    
+
 }

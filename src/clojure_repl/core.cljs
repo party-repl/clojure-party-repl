@@ -15,16 +15,15 @@
 (def disposables (atom []))
 
 (defn start-repl
-  "This is exported as one of the plugin commands."
+  "Exported plugin command. This starts a local repl."
   []
   (console-log "clojure-repl started!")
   (host/create-editors)
   (local-repl/start))
 
 (defn send-to-repl
-  "This is exported as one of the plugin commands.
-  When the command is triggered, it grabs appropriate text to be sent to a repl
-  depending on the context."
+  "Exported plugin command. Grabs text from the appropriate editor, depending on
+  the context and sends it to the repl."
   []
   (let [editor (.getActiveTextEditor (.-workspace js/atom))]
     (cond
@@ -33,58 +32,76 @@
       (.isEmpty (.getLastSelection editor)) (execution/execute-top-level-form editor)
       :else (execution/execute-selected-text editor))))
 
-(defn show-older-repl-history [event]
+(defn show-older-repl-history
+  "Exported plugin command. Replaces the content of the input-editor with an
+  older history item."
+  [event]
   (let [editor (.getActiveTextEditor (.-workspace js/atom))]
-    (when (or (= editor (:guest-input-editor @state)) (= editor (:host-input-editor @state)))
+    (when (or (= editor (:guest-input-editor @state))
+              (= editor (:host-input-editor @state)))
       (when (< (:current-history-index @state) (count (:repl-history @state)))
         (swap! state update :current-history-index inc))
       (when (> (count (:repl-history @state)) (:current-history-index @state))
         (common/show-current-history editor)))))
 
-(defn show-newer-repl-history [event]
+(defn show-newer-repl-history
+  "Exported plugin command. Replaces the content of the input-editor with a
+  newer history item."
+  [event]
   (let [editor (.getActiveTextEditor (.-workspace js/atom))]
-    (when (or (= editor (:guest-input-editor @state)) (= editor (:host-input-editor @state)))
+    (when (or (= editor (:guest-input-editor @state))
+              (= editor (:host-input-editor @state)))
       (when (>= (:current-history-index @state) 0)
         (swap! state update :current-history-index dec))
       (if (> 0 (:current-history-index @state))
         (.setText editor "")
         (common/show-current-history editor)))))
 
-(defn add-commands []
-  (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:startRepl" start-repl))
-  (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:sendToRepl" send-to-repl))
-  (swap! disposables conj (.add commands "atom-text-editor.repl-entry" "clojure-repl:showNewerHistory" show-newer-repl-history))
-  (swap! disposables conj (.add commands "atom-text-editor.repl-entry" "clojure-repl:showOlderHistory" show-older-repl-history)))
+(defn ^:private add-commands
+  "Exports commands and makes them available in Atom. Exported commands also
+  need to be added to shadow-cljs.edn."
+  []
+  (swap! disposables
+         concat
+         [(.add commands "atom-workspace" "clojure-repl:startRepl" start-repl)
+          (.add commands "atom-workspace" "clojure-repl:sendToRepl" send-to-repl)
+          (.add commands "atom-text-editor.repl-entry" "clojure-repl:showNewerHistory" show-newer-repl-history)
+          (.add commands "atom-text-editor.repl-entry" "clojure-repl:showOlderHistory" show-older-repl-history)]))
 
 (defn consume-autosave
-  "This consumes Services API provided by Atom's Autosave package to prevent
-  certain items from getting autosaved into project."
-  [m]
-  (let [dont-save-if (get (js->clj m) "dontSaveIf")]
+  "Consumes the Services API provided by Atom's autosave package to prevent
+  our editors from getting autosaved into the project. The hook for this is
+  defined in package.json."
+  [info]
+  (let [dont-save-if (get (js->clj info) "dontSaveIf")]
     (dont-save-if (fn [pane-item]
-                    (condp #(string/ends-with? %2 %1) (.getPath pane-item)
-                      common/output-editor-title true
-                      common/input-editor-title true
-                      false)))))
+                    (some #(string/ends-with? (.getPath pane-item) %1)
+                          [common/output-editor-title common/input-editor-title])))))
 
-(defn activate []
+
+(defn activate
+  "Initializes the plugin, called automatically by Atom, during startup or if
+  the plugin was just installed or re-enabled."
+  []
   (console-log "Activating clojure-repl...")
   (add-commands)
   (guest/look-for-teletyped-repls))
 
-(defn deactivate []
+(defn deactivate
+  "Shuts down the plugin, called automatically by Atom if the plugin is
+  disabled or uninstalled."
+  []
   (console-log "Deactivating clojure-repl...")
   (host/dispose)
   (guest/dispose)
   (doseq [disposable @disposables]
-    (.dispose disposable)))
+    (.dispose disposable))
+  (reset! disposables []))
 
-(defn start
-  "Used for development."
-  []
-  (activate))
+(def start
+  "Activates the plugin, used for development."
+  activate)
 
-(defn stop
-  "Used for development."
-  []
-  (deactivate))
+(def stop
+  "Deactivates the plugin, used for development."
+  deactivate)
