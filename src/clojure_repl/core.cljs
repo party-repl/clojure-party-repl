@@ -5,6 +5,7 @@
             [clojure-repl.host :as host]
             [clojure-repl.guest :as guest]
             [clojure-repl.local-repl :as local-repl]
+            [clojure-repl.remote-repl :as remote-repl]
             [clojure-repl.execution :as execution]))
 
 (def ashell (node/require "atom"))
@@ -14,7 +15,7 @@
 ;; TODO: Merge with the common/state
 (def disposables (atom []))
 
-(defn start-repl
+(defn start-local-repl
   "This is exported as one of the plugin commands."
   []
   (console-log "clojure-repl started!")
@@ -25,10 +26,10 @@
   "This is exported as one of the plugin commands. Connect to an existing nrepl
   by host and port."
   ([event]
-   (.log js/console "connect-to-nrepl startup event:" event)
+   (console-log "connect-to-nrepl startup event:" event)
    (console-log "clojure-repl on the case!")
    (host/create-editors)
-   (local-repl/connect-existing {:host "localhost" :port 12345})))
+   (remote-repl/connect-to-remote-repl {:host "localhost" :port 12345})))
 
 (defn send-to-repl
   "This is exported as one of the plugin commands.
@@ -60,7 +61,7 @@
         (common/show-current-history editor)))))
 
 (defn add-commands []
-  (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:startRepl" start-repl))
+  (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:startRepl" start-local-repl))
   (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:connectToNrepl" connect-to-nrepl))
   (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:sendToRepl" send-to-repl))
   (swap! disposables conj (.add commands "atom-text-editor.repl-entry" "clojure-repl:showNewerHistory" show-newer-repl-history))

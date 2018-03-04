@@ -27,7 +27,7 @@
   "Used for development. Text can be viewed in the Atom's Console when in Dev
   Mode."
   [& text]
-  (.log js/console (apply str text)))
+  (apply (.-log js/console) text))
 
 (defn add-subscription
   "This should be wrapped whenever adding any subscriptions in order to dispose

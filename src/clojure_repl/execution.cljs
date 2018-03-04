@@ -1,7 +1,7 @@
 (ns clojure-repl.execution
   (:require [clojure.string :as string]
             [cljs.nodejs :as node]
-            [clojure-repl.local-repl :as local-repl]
+            [clojure-repl.repl :as repl]
             [clojure-repl.common :as common :refer [execute-comment
                                                     append-to-editor
                                                     console-log]]))
@@ -9,7 +9,7 @@
 (def ashell (node/require "atom"))
 
 (defn execute [code & [options]]
-  (local-repl/execute-code code options))
+  (repl/execute-code code options))
 
 (defn inside-string-or-comment?
   "Checks if the buffer position is inside the scope of string, comment, or

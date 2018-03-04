@@ -5,7 +5,7 @@
                 :exports {:activate clojure-repl.core/activate
                           :deactivate clojure-repl.core/deactivate
                           :connectToNrepl clojure-repl.core/connect-to-nrepl
-                          :startRepl clojure-repl.core/start-repl
+                          :startRepl clojure-repl.core/start-local-repl
                           :sendToRepl clojure-repl.core/send-to-repl
                           :showNewerHistory clojure-repl.core/show-newer-repl-history
                           :showOlderHistory clojure-repl.core/show-older-repl-history

@@ -2,11 +2,7 @@
 'context-menu':
   'atom-text-editor': [
     {
-      'label': 'Toggle clojure-repl'
-      'command': 'clojure-repl:startRepl'
-    },
-    {
-      'label': 'Execute clojure-repl'
+      'label': 'Execute Code clojure-repl'
       'command': 'clojure-repl:sendToRepl'
     }
   ]
@@ -17,11 +13,15 @@
       'label': 'clojure-repl'
       'submenu': [
         {
-          'label': 'Start'
+          'label': 'Start Local Repl'
           'command': 'clojure-repl:startRepl'
         },
         {
-          'label': 'Execute'
+          'label': 'Connect Remote Repl'
+          'command': 'clojure-repl:connectToNrepl'
+        },
+        {
+          'label': 'Execute Code'
           'command': 'clojure-repl:sendToRepl'
         }
       ]

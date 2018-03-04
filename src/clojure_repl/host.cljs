@@ -1,6 +1,6 @@
 (ns clojure-repl.host
   (:require [clojure.string :as string :refer [ends-with? trim trim-newline replace]]
-            [clojure-repl.local-repl :as local-repl]
+            [clojure-repl.repl :as repl]
             [clojure-repl.execution :as execution]
             [clojure-repl.common :as common :refer [output-editor-title
                                                     input-editor-title
@@ -45,7 +45,7 @@
                 (swap! state assoc :host-output-editor editor)
                 (add-subscription (.onDidDestroy editor (fn [event]
                                                           (swap! state assoc :host-output-editor nil)
-                                                          (local-repl/stop-process)
+                                                          (repl/stop-process)
                                                           (dispose))))))))
 
 ;; TODO: Set a placeholder text to notify user when repl is ready.
@@ -70,7 +70,7 @@
                                                                    (execution/execute-entered-text editor))))))
                 (add-subscription (.onDidDestroy editor (fn [event]
                                                           (swap! state assoc :host-input-editor nil)
-                                                          (local-repl/stop-process)
+                                                          (repl/stop-process)
                                                           (dispose))))))))
 
 ;; TODO: Make sure to create input editor after output editor has been created.
