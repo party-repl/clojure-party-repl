@@ -120,9 +120,7 @@ Exported functions can be linked to keybindings and menu items, checkout the sta
 - [ ] Support for Boot
 - [ ] Support connecting into remote Socket REPLs
 - [ ] ClojureScript support
-- [ ] Unrepl support
-
-    Support nREPL, but all advanced features like type ahead information, getting docstrings and namespace reflection will only work with unrepl. First class nREPL support only extends to executing commands and generating great stacktraces.
+- [ ] Add unRepl support
 - [ ] Add line number and file metadata to stacktraces.
 
 

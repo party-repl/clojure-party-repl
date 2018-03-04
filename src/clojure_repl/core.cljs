@@ -73,7 +73,7 @@
   []
   (swap! disposables
          concat
-         [(.add commands "atom-workspace" "clojure-repl:startRepl" start-local-repl)
+         [(.add commands "atom-workspace" "clojure-repl:startRepl" start-local-repl) ;; TODO: Rename this command to startLocalRepl
           (.add commands "atom-workspace" "clojure-repl:connectToNrepl" connect-to-nrepl)
           (.add commands "atom-workspace" "clojure-repl:sendToRepl" send-to-repl)
           (.add commands "atom-text-editor.repl-entry" "clojure-repl:showNewerHistory" show-newer-repl-history)
