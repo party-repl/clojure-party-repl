@@ -1,5 +1,4 @@
 (defproject clojure-repl "0.1.0"
-  :description "Clojure/ClojureScript REPL for Atom"
 
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
