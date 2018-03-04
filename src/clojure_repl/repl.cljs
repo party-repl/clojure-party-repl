@@ -1,5 +1,6 @@
 (ns clojure-repl.repl
   (:require [cljs.nodejs :as node]
+            [clojure.string :as string]
             [clojure-repl.common :as common :refer [state
                                                     append-to-editor
                                                     add-repl-history
@@ -28,9 +29,11 @@
          :init-code nil}))
 
 (defn append-to-output-editor
-  "Appends text at the end of the output editor."
+  "Appends text at the end of the output editor. Returns true to notify
+  handle-messages that the text got appended."
   [text & {:keys [add-newline?] :or {add-newline? true}}]
-  (append-to-editor (:host-output-editor @state) text :add-newline? add-newline?))
+  (append-to-editor (:host-output-editor @state) text :add-newline? add-newline?)
+  true)
 
 (defn close-connection
   "Closes the connection to the repl."
@@ -43,25 +46,29 @@
                             :port nil
                             :current-ns nil)))
 
+(defn handle-message
+  "Append error message or results with matching session to the output editor."
+  [message]
+  (console-log "Receiving result from repl... " (.-session message) " " (.-out message) " " (.-value message) " " (.-err message))
+  (if (.-err message)
+    (append-to-output-editor (.-err message))
+    (when (and (= (.-session message) (:session @repl-state))
+               (or (.-out message) (.-value message)))
+      (console-log "Result arrived with ns: " (.-ns message))
+      (when (.-ns message)
+        (swap! repl-state assoc :current-ns (.-ns message)))
+      (when (.-out message)
+        (append-to-output-editor (string/trim (.-out message))))
+      (when (.-value message)
+        (append-to-output-editor (.-value message))))))
+
 (defn handle-messages
-  "Looks through messages received from repl. All error messages and any results
-  with namespace and matching session get appended to the editor."
+  "Looks through messages received from repl. If any of the messages got
+  appended to the editor, append the namespace prompt at the end."
   [id messages]
   (console-log "Handling messages...")
-  (doseq [message messages]
-    (console-log "Receiving result from repl... " id " " (.-out message) " " (.-value message) " " (.-err message))
-    (if (.-err message)
-      (do
-        (append-to-output-editor (.-err message))
-        (append-to-output-editor (str (:current-ns @repl-state) "=> ") :add-newline? false))
-      (when (and (.-ns message) (= (.-session message) (:session @repl-state)))
-        (console-log "Result arrived with ns: " (.-ns message))
-        (swap! repl-state assoc :current-ns (.-ns message))
-        (when (.-out message)
-          (append-to-output-editor (.-out message)))
-        (when (.-value message)
-          (append-to-output-editor (.-value message)))
-        (append-to-output-editor (str (:current-ns @repl-state) "=> ") :add-newline? false)))))
+  (when (some some? (map handle-message messages))
+    (append-to-output-editor (str (:current-ns @repl-state) "=> ") :add-newline? false)))
 
 (defn wrap-to-catch-exception
   "Wraps the code with try-catch in order to get stacktraces if error happened."
