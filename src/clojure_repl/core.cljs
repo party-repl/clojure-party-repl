@@ -16,15 +16,15 @@
 (def disposables (atom []))
 
 (defn start-local-repl
-  "This is exported as one of the plugin commands."
+  "Exported plugin command. Starts new processes to run the repl."
   []
   (console-log "clojure-repl started!")
   (host/create-editors)
   (local-repl/start))
 
+;; TODO: Stop hardcoding and create a UI for this.
 (defn connect-to-nrepl
-  "This is exported as one of the plugin commands. Connect to an existing nrepl
-  by host and port."
+  "Exported plugin command. Connects to an existing nrepl by host and port."
   ([event]
    (console-log "connect-to-nrepl startup event:" event)
    (console-log "clojure-repl on the case!")
@@ -67,12 +67,17 @@
         (.setText editor "")
         (common/show-current-history editor)))))
 
-(defn add-commands []
-  (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:startRepl" start-local-repl))
-  (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:connectToNrepl" connect-to-nrepl))
-  (swap! disposables conj (.add commands "atom-workspace" "clojure-repl:sendToRepl" send-to-repl))
-  (swap! disposables conj (.add commands "atom-text-editor.repl-entry" "clojure-repl:showNewerHistory" show-newer-repl-history))
-  (swap! disposables conj (.add commands "atom-text-editor.repl-entry" "clojure-repl:showOlderHistory" show-older-repl-history)))
+(defn ^:private add-commands
+  "Exports commands and makes them available in Atom. Exported commands also
+  need to be added to shadow-cljs.edn."
+  []
+  (swap! disposables
+         concat
+         [(.add commands "atom-workspace" "clojure-repl:startRepl" start-local-repl)
+          (.add commands "atom-workspace" "clojure-repl:connectToNrepl" connect-to-nrepl)
+          (.add commands "atom-workspace" "clojure-repl:sendToRepl" send-to-repl)
+          (.add commands "atom-text-editor.repl-entry" "clojure-repl:showNewerHistory" show-newer-repl-history)
+          (.add commands "atom-text-editor.repl-entry" "clojure-repl:showOlderHistory" show-older-repl-history)]))
 
 (defn consume-autosave
   "Consumes the Services API provided by Atom's autosave package to prevent
