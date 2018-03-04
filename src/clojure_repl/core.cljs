@@ -22,7 +22,7 @@
   (host/create-editors)
   (local-repl/start))
 
-;; TODO: Stop hardcoding and create a UI for this.
+;; TODO: Create a UI instead of hardcoding this.
 (defn connect-to-nrepl
   "Exported plugin command. Connects to an existing nrepl by host and port."
   ([event]
