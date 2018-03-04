@@ -89,7 +89,6 @@
                     (some #(string/ends-with? (.getPath pane-item) %1)
                           [common/output-editor-title common/input-editor-title])))))
 
-
 (defn activate
   "Initializes the plugin, called automatically by Atom, during startup or if
   the plugin was just installed or re-enabled."
