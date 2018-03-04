@@ -153,7 +153,6 @@ Exported functions can be linked to keybindings and menu items, checkout the sta
 
 
 ### Polish
-- [ ] Fix the
 - [ ] Add support for multiple Atom projects. When starting a REPL either start it in the project for the current file, or prompt the user and ask which file.
 - [ ] Update the our namespace detection regex to allow for all valid characters in a namespace: include $=<>_
 - [ ] Only allow one command to execute at a time. If we execute code in the REPL, either from a file or directly from the input-editor, it should show a spinner in the REPL UI and ignore the command.
