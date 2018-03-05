@@ -24,10 +24,10 @@
          :current-history-index -1}))
 
 (defn console-log
-  "Used for development. Text can be viewed in the Atom's Console when in Dev
-  Mode."
-  [& text]
-  (apply (.-log js/console) text))
+  "Used for development. The output can be viewed in the Atom's Console when in
+  Dev Mode."
+  [& output]
+  (apply (.-log js/console) output))
 
 (defn add-subscription
   "This should be wrapped whenever adding any subscriptions in order to dispose

@@ -28,8 +28,9 @@
   ([event]
    (console-log "connect-to-nrepl startup event:" event)
    (console-log "clojure-repl on the case!")
-   (host/create-editors)
-   (remote-repl/connect-to-remote-repl {:host "localhost" :port 12345})))
+   (remote-repl/show-connection-modal-panel)))
+;   (host/create-editors)
+;   (remote-repl/connect-to-remote-repl {:host "localhost" :port 12345})))
 
 (defn send-to-repl
   "Exported plugin command. Grabs text from the appropriate editor, depending on
@@ -95,6 +96,7 @@
   []
   (console-log "Activating clojure-repl...")
   (add-commands)
+  (remote-repl/create-connection-modal-panel)
   (guest/look-for-teletyped-repls))
 
 (defn deactivate
