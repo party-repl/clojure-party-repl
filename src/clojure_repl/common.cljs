@@ -62,10 +62,15 @@
 ;; TODO: Pretty print results
 (defn append-to-editor
   "Appends text at the end of the editor. Always append a newline following the
-  text unless specified not to."
+  text unless specified not to. Because of the Clojure grammar set on the
+  editor, we need to check if the last line only contains whitespaces, and move
+  the cursor to the front of the line in order to ignore them. Otherwise, any
+  text appended after that gets indented to the right."
   [editor text & {:keys [add-newline?] :or {add-newline? true}}]
   (when editor
     (.moveToBottom editor)
+    (when (re-find #"^\s+$" (.getLastLine (.getBuffer editor)))
+      (.moveToBeginningOfLine editor))
     (.insertText editor text)
     (when add-newline?
       (.insertNewlineBelow editor))
