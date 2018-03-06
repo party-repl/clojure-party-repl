@@ -49,8 +49,8 @@
     (.addEventListener input-b "keydown" handle-keydown)))
 
 (defn create-connection-modal-panel []
-  (let [default-host "localhost" ;; TODO: Add a configurable setting for this?
-        default-port "" ;; TODO: Add a configurable setting for this?
+  (let [default-host "localhost" ;; TODO: Add a configurable setting for this
+        default-port "" ;; TODO: Add a configurable setting for this
         container (.createElement js/document "section")
         header (doto (.createElement js/document "h4")
                      (.setAttribute "class" "icon icon-clob"))
@@ -85,11 +85,16 @@
     (let [panel (-> (.-workspace js/atom)
                     (.addModalPanel (clj->js {"item" container
                                               "visible" false})))]
-      (add-connection-input-listeners panel host-input port-input)
+      ;(add-connection-input-listeners panel host-input port-input)
+      (-> (.-commands js/atom) (.add container "core:confirm" (fn [event] (console-log event))))
+      (-> (.-commands js/atom) (.add container "core:cancel" (fn [event] (console-log event))))
       (swap! ui-components assoc :panel panel
                                  :host-input host-input
                                  :port-input port-input))))
 
 (defn show-connection-modal-panel []
-  (.show (get @ui-components :panel))
-  (.focus (get @ui-components :host-input)))
+  (let [{:keys [:panel :host-input :port-input]} @ui-components]
+    (.setText (.getModel host-input) "")
+    (.setText (.getModel port-input) "")
+    (.show panel)
+    (.focus host-input)))

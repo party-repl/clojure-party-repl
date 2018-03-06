@@ -1,4 +1,5 @@
 (ns clojure-repl.core
+  (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [clojure.string :as string]
             [cljs.nodejs :as node]
             [clojure-repl.common :as common :refer [state console-log]]
@@ -29,8 +30,8 @@
    (console-log "connect-to-nrepl startup event:" event)
    (console-log "clojure-repl on the case!")
    (remote-repl/show-connection-modal-panel)))
-;   (host/create-editors)
-;   (remote-repl/connect-to-remote-repl {:host "localhost" :port 12345})))
+;   (host/create-editors)))
+;   (remote-repl/connect-to-remote-repl {:host "localhost" :port 12345}))))
 
 (defn send-to-repl
   "Exported plugin command. Grabs text from the appropriate editor, depending on

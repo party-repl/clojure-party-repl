@@ -23,6 +23,7 @@
          :repl-history (list)
          :current-history-index -1}))
 
+; TODO: Can we just use println and the like instead?
 (defn console-log
   "Used for development. The output can be viewed in the Atom's Console when in
   Dev Mode."
