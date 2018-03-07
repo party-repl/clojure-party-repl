@@ -1,5 +1,7 @@
 (ns clojure-repl.remote-repl
+  (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [cljs.nodejs :as node]
+            [cljs.core.async :refer [chan <! >!] :as async]
             [clojure.string :as string]
             [clojure-repl.common :refer [console-log]]
             [clojure-repl.repl :as repl :refer [repl-state
@@ -17,36 +19,11 @@
                           :init-code "(.name *ns*)")
   (connect-to-nrepl))
 
-(def ^:private ui-components (atom {:panel nil
-                                    :host-input nil
-                                    :port-input nil}))
+(def ui-components (atom {:panel nil
+                          :host-editor nil
+                          :port-editor nil}))
 
-(defn ^:private add-connection-input-listeners
-  "Adds a keydown listener to intercept Atom's default behavior
-  and switch between the inputs. Since there are only two
-  inputs, we don't need to worry about behavior for shift-tab
-  since it's identical.
-
-  An altenative way to implement this (how the find-and-replace
-  does it), would be to export this function as a command and
-  create a keymap with a selector which specifically targets these
-  inputs."
-  [panel input-a input-b]
-  (letfn [(handle-keydown [event]
-            (case (.-key event)
-              "Tab" (do
-                      (if (.hasFocus input-a)
-                        (.focus input-b)
-                        (.focus input-a))
-                      (.stopPropagation event)
-                      (.preventDefault event))
-              "Escape" (do
-                         (.hide panel)
-                         (.stopPropagation event)
-                         (.preventDefault event))
-              nil))]
-    (.addEventListener input-a "keydown" handle-keydown)
-    (.addEventListener input-b "keydown" handle-keydown)))
+(def ^:private panel-channel (chan))
 
 (defn create-connection-modal-panel []
   (let [default-host "localhost" ;; TODO: Add a configurable setting for this
@@ -58,7 +35,7 @@
                              (.setAttribute "class" "block"))
         host-label (.createElement js/document "div")
         host-subview (.createElement js/document "subview")
-        host-input (doto (.createElement js/document "atom-text-editor")
+        host-editor (doto (.createElement js/document "atom-text-editor")
                          (.setAttribute "mini" true)
                          (.setAttribute "placeholder-text" default-host)
                          (.setAttribute "tabindex" -1))
@@ -66,7 +43,7 @@
                              (.setAttribute "class" "block"))
         port-label (.createElement js/document "div")
         port-subview (.createElement js/document "subview")
-        port-input (doto (.createElement js/document "atom-text-editor")
+        port-editor (doto (.createElement js/document "atom-text-editor")
                          (.setAttribute "mini" true)
                          (.setAttribute "placeholder-text" default-port)
                          (.setAttribute "tabindex" -1))]
@@ -77,24 +54,47 @@
     (.appendChild container host-container)
     (.appendChild host-container host-label)
     (.appendChild host-container host-subview)
-    (.appendChild host-subview host-input)
+    (.appendChild host-subview host-editor)
     (.appendChild container port-container)
     (.appendChild port-container port-label)
     (.appendChild port-container port-subview)
-    (.appendChild port-subview port-input)
+    (.appendChild port-subview port-editor)
     (let [panel (-> (.-workspace js/atom)
                     (.addModalPanel (clj->js {"item" container
                                               "visible" false})))]
-      ;(add-connection-input-listeners panel host-input port-input)
-      (-> (.-commands js/atom) (.add container "core:confirm" (fn [event] (console-log event))))
-      (-> (.-commands js/atom) (.add container "core:cancel" (fn [event] (console-log event))))
+      (-> (.-commands js/atom)
+          (.add container
+                "core:confirm"
+                (fn [event] ; todo include default values here
+                  (let [host (-> (.getModel host-editor)
+                                 (.getText))
+                        port (-> (.getModel port-editor)
+                                 (.getText)
+                                 (int))]
+                    (when (and (pos? (count host))
+                               (pos? port))
+                      (.hide panel)
+                      (async/put! panel-channel [host port]))))))
+      (-> (.-commands js/atom)
+          (.add container
+                "core:cancel"
+                (fn [event]
+                  (println "here")
+                  (async/put! panel-channel false))))
       (swap! ui-components assoc :panel panel
-                                 :host-input host-input
-                                 :port-input port-input))))
+                                 :host-editor host-editor
+                                 :port-editor port-editor))))
 
 (defn show-connection-modal-panel []
-  (let [{:keys [:panel :host-input :port-input]} @ui-components]
-    (.setText (.getModel host-input) "")
-    (.setText (.getModel port-input) "")
-    (.show panel)
-    (.focus host-input)))
+  (let [{:keys [:panel :host-editor :port-editor]} @ui-components]
+    (go
+      (if-not (.-visible panel)
+        (do
+          (.setText (.getModel host-editor) "")
+          (.setText (.getModel port-editor) "")
+          (.show panel)
+          (.focus host-editor)
+          (<! panel-channel))
+        (do
+          (.focus host-editor)
+          false)))))
