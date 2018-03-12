@@ -30,11 +30,9 @@
   [event]
   (console-log "clojure-repl on the case!")
   (go
-    ; (console-log (<! c))))
-    ; (console-log "finished!")))
     (when-let [[host port] (<! (remote-repl/show-connection-modal-panel))]
       (prn host port))))
-  ; (host/create-editors)))
+  ; (host/create-editors))))
 ;   (remote-repl/connect-to-remote-repl {:host "localhost" :port 12345}))))
 
 (defn send-to-repl
