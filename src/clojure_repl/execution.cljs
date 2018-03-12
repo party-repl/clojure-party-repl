@@ -24,16 +24,16 @@
   "Searches through the entire buffer for all namespace declarations and
   collects the ranges."
   [editor range]
-  (let [ranges (atom [])
+  (let [ranges (transient [])
         regex (js/RegExp. "\\s*\\(\\s*ns\\s*([A-Za-z\\*\\+\\!\\-\\_\\'\\?]?[A-Za-z0-9\\.\\*\\+\\!\\-\\_\\'\\?\\:]*)" "gm")]
     (.backwardsScanInBufferRange editor
                                  regex
                                  range (fn [result]
                                          (when-not (inside-string-or-comment? editor (.-start (.-range result)))
                                            (let [match-string (str (second (.-match result)))]
-                                             (swap! ranges conj [(.-start (.-range result)) match-string])))))
-    (console-log "Namespaces " @ranges)
-    @ranges))
+                                             (conj! ranges [(.-start (.-range result)) match-string])))))
+    (console-log "Namespaces " ranges)
+    (persistent! ranges)))
 
 ;; TODO: Warn user if the namespace isn't declared in the repl. Currently,
 ;;       repl simply won't return any results when we send code to undeclared
