@@ -1,8 +1,12 @@
-# clojure-repl
+# Clojure Party REPL
 
 Clojure REPL for Atom written in ClojureScript with full Teletype support for pair programming. Let's party! 😄
 
 ![Screenshot](readme.png)
+
+
+## Wet Paint
+This project is still alpha quality. It works — core features are in place, but it's not quite ready to be published to Atom's Package manager yet. If you want to start using it now though, follow the [development instructions](#development).
 
 
 ## How to use this
@@ -26,6 +30,7 @@ First, install the Shadow CLJS node package somewhere on your $PATH:
 ```
 npm install shadow-cljs
 ```
+
 
 ### Compiling our CLJS with auto code-reloading
 Compile using one of the methods below:
@@ -174,4 +179,7 @@ all output can be seen even from other threads.
 
 ## License
 Copyright 2018 Tomomi Livingstone.
+
 Distributed under the Eclipse Public License, the same as Clojure.
+
+Balloon icon made by [Freepik](https://www.freepik.com) from [Flaticon](https://www.flaticon.com), licensed under [CC 3.0 BY](http://creativecommons.org/licenses/by/3.0/).
