@@ -87,25 +87,10 @@
                  (repl/pst throwable)
                  (throw (Exception. (str *err*)))))))"))
 
-(declare send-to-repl)
-
-(defn change-ns-and-resend [code & [options]]
-  (console-log "Resending code to repl... " code " with " options)
-  (let [eval-options (clj->js {"op" "eval"
-                               "code" (wrap-to-catch-exception (str "(ns " (:ns options) ")"))
-                               "ns" (:current-ns @repl-state)
-                               "session" (:session @repl-state)})]
-    (.send (:connection @repl-state) eval-options (fn [err messages]
-                                                      (try
-                                                        (console-log "Resent code through connection... " messages)
-                                                        (send-to-repl code options)
-                                                        (catch js/Exception error
-                                                          (.error js/console error)
-                                                          (.addError (.-notifications js/atom) (str "Error resending to REPL: " error))))))))
-
 (defn send-to-repl
   "Sends code over to repl with current namespace, or optional namespace if
-  specified. "
+  specified. When a namespace-not-found message is received, resend the code
+  to the current namespace."
   [code & [options]]
   (console-log "Sending code to repl... " code " with " options)
   (let [current-ns (or (:ns options) (:current-ns @repl-state))
@@ -118,8 +103,8 @@
                                                       (try
                                                         (console-log "Sent code through connection... " messages)
                                                         (when (namespace-not-found? (last messages))
-                                                          (console-log "Resending code after changing namespace...")
-                                                          (change-ns-and-resend code options))
+                                                          (console-log "Resending code to the current namespace...")
+                                                          (send-to-repl code))
                                                         (catch js/Exception error
                                                           (.error js/console error)
                                                           (.addError (.-notifications js/atom) (str "Error sending to REPL: " error))))))))
