@@ -46,6 +46,10 @@
                             :port nil
                             :current-ns nil)))
 
+(defn namespace-not-found? [message]
+  (when (.-status message)
+    (some #(= "namespace-not-found" %) (.-status message))))
+
 (defn handle-message
   "Append error message or results with matching session to the output editor."
   [message]
@@ -67,12 +71,9 @@
   appended to the editor, append the namespace prompt at the end."
   [id messages]
   (console-log "Handling messages...")
-  (when (some some? (map handle-message messages))
+  (when (and (not-any? namespace-not-found? messages)
+             (some some? (map handle-message messages)))
     (append-to-output-editor (str (:current-ns @repl-state) "=> ") :add-newline? false)))
-
-(defn namespace-not-found? [message]
-  (when (.-status message)
-    (some #(= "namespace-not-found" %) (.-status message))))
 
 (defn wrap-to-catch-exception
   "Wraps the code with try-catch in order to get stacktraces if error happened."
@@ -96,13 +97,11 @@
                                "session" (:session @repl-state)})]
     (.send (:connection @repl-state) eval-options (fn [err messages]
                                                       (try
-                                                        (console-log "Sent code through connection... " messages)
-                                                        (when (namespace-not-found? (last messages))
-                                                          (console-log "Resending code after changing namespace...")
-                                                          (send-to-repl code options))
+                                                        (console-log "Resent code through connection... " messages)
+                                                        (send-to-repl code options)
                                                         (catch js/Exception error
                                                           (.error js/console error)
-                                                          (.addError (.-notifications js/atom) (str "Error sending to REPL: " error))))))))
+                                                          (.addError (.-notifications js/atom) (str "Error resending to REPL: " error))))))))
 
 (defn send-to-repl
   "Sends code over to repl with current namespace, or optional namespace if
