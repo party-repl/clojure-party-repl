@@ -46,10 +46,14 @@
                             :port nil
                             :current-ns nil)))
 
+(defn namespace-not-found? [message]
+  (when (.-status message)
+    (some #(= "namespace-not-found" %) (.-status message))))
+
 (defn handle-message
   "Append error message or results with matching session to the output editor."
   [message]
-  (console-log "Receiving result from repl... " (.-session message) " " (.-out message) " " (.-value message) " " (.-err message))
+  (console-log "Receiving result from repl... " (.-status message) " " (.-session message) " " (.-out message) " " (.-value message) " " (.-err message))
   (if (.-err message)
     (append-to-output-editor (.-err message))
     (when (and (= (.-session message) (:session @repl-state))
@@ -67,7 +71,8 @@
   appended to the editor, append the namespace prompt at the end."
   [id messages]
   (console-log "Handling messages...")
-  (when (some some? (map handle-message messages))
+  (when (and (not-any? namespace-not-found? messages)
+             (some some? (map handle-message messages)))
     (append-to-output-editor (str (:current-ns @repl-state) "=> ") :add-newline? false)))
 
 (defn wrap-to-catch-exception
@@ -84,24 +89,22 @@
 
 (defn send-to-repl
   "Sends code over to repl with current namespace, or optional namespace if
-  specified. "
+  specified. When a namespace-not-found message is received, resend the code
+  to the current namespace."
   [code & [options]]
-  (console-log "Sending code to repl... " code " inside " (:ns options))
+  (console-log "Sending code to repl... " code " with " options)
   (let [current-ns (or (:ns options) (:current-ns @repl-state))
         wrapped-code (wrap-to-catch-exception code)
         eval-options (clj->js {"op" "eval"
                                "code" wrapped-code
                                "ns" current-ns
                                "session" (:session @repl-state)})]
-    (.send (:connection @repl-state) eval-options (fn [messages]
+    (.send (:connection @repl-state) eval-options (fn [err messages]
                                                       (try
-                                                        (console-log "Sent code through connection...")
-                                                        (doseq [message messages]
-                                                          (console-log (js->clj message))
-                                                          (cond
-                                                            (.-value message) (append-to-output-editor (.-value message))
-                                                            (.-err message) (append-to-output-editor (.-err message))
-                                                            (.-out message) (append-to-output-editor (.-out message))))
+                                                        (console-log "Sent code through connection... " messages)
+                                                        (when (namespace-not-found? (last messages))
+                                                          (console-log "Resending code to the current namespace...")
+                                                          (send-to-repl code))
                                                         (catch js/Exception error
                                                           (.error js/console error)
                                                           (.addError (.-notifications js/atom) (str "Error sending to REPL: " error))))))))
