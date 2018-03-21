@@ -8,7 +8,9 @@
             [clojure-repl.guest :as guest]
             [clojure-repl.local-repl :as local-repl]
             [clojure-repl.remote-repl :as remote-repl]
-            [clojure-repl.execution :as execution]))
+            [clojure-repl.execution :as execution]
+            [clojure-repl.connection-panel :as panel]
+            [clojure-repl.strings :as strings]))
 
 (def ashell (node/require "atom"))
 (def commands (.-commands js/atom))
@@ -30,10 +32,9 @@
   [event]
   (console-log "clojure-repl on the case!")
   (go
-    (when-let [[host port] (<! (remote-repl/show-connection-modal-panel))]
-      (prn host port))))
-  ; (host/create-editors))))
-;   (remote-repl/connect-to-remote-repl {:host "localhost" :port 12345}))))
+    (when-let [address (<! (panel/prompt-connection-panel strings/nrepl-connection-message))]
+      (host/create-editors)
+      (remote-repl/connect-to-remote-repl address))))
 
 (defn send-to-repl
   "Exported plugin command. Grabs text from the appropriate editor, depending on
@@ -99,7 +100,7 @@
   []
   (console-log "Activating clojure-repl...")
   (add-commands)
-  (remote-repl/create-connection-modal-panel)
+  (panel/create-connection-panel)
   (guest/look-for-teletyped-repls))
 
 (defn deactivate
