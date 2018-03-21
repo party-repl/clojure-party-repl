@@ -59,11 +59,11 @@
                              (console-log "Exiting repl... " code " " signal)
                              (swap! repl-state assoc :lein-process nil))))
 
-;; TODO: Look for the project.clj file and decide which path to use.
-;; TODO: Warn user when project.clj doesn't exist in the project.
 (defn get-project-path []
   (first (.getPaths (.-project js/atom))))
 
+;; TODO: Look for the project.clj file and decide which path to use.
+;; TODO: Warn user when project.clj doesn't exist in the project.
 (defn get-project-clj [project-path]
   (console-log "Looking for project.clj at " project-path "/project.clj")
   (.existsSync fs (str project-path + "/project.clj")))
@@ -75,7 +75,7 @@
   (let [project-path (get-project-path)
         process-env (clj->js {"cwd" project-path
                               "env" (goog.object.set env "PWD" project-path)})
-        lein-process (.spawn child-process (first lein-exec) (clj->js (rest lein-exec)) process-env)]
+        lein-process (.spawn child-process (first lein-exec) (clj->js (next lein-exec)) process-env)]
     (swap! repl-state assoc :current-working-directory project-path)
     (swap! repl-state assoc :process-env process-env)
     (swap! repl-state assoc :lein-process lein-process)

@@ -16,17 +16,22 @@
 (def net (node/require "net"))
 
 ;; TODO: Merge with the common/state
+(def repls
+  (atom {}))
+
+;; Template for repl's state
 (def repl-state
-  (atom {:current-working-directory ""
-         :lein-path "/usr/local/bin" ;; TODO: Read this from Settings
-         :process-env nil
-         :lein-process nil
-         :connection nil
-         :session nil
-         :host "localhost"
-         :port nil
-         :current-ns "user"
-         :init-code nil}))
+  {:current-working-directory ""
+   :lein-path "/usr/local/bin" ;; TODO: Read this from Settings
+   :process-env nil
+   :lein-process nil
+   :connection nil
+   :session nil
+   :host "localhost"
+   :port nil
+   :current-ns "user"
+   :init-code nil
+   :type nil})
 
 (defn append-to-output-editor
   "Appends text at the end of the output editor. Returns true to notify

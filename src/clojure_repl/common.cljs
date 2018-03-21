@@ -1,8 +1,10 @@
 (ns clojure-repl.common
   (:require [cljs.nodejs :as node]
-            [cljs.pprint :refer [pprint]]))
+            [cljs.pprint :refer [pprint]]
+            [clojure.string :as string]))
 
 (def ashell (node/require "atom"))
+(def fs (node/require "fs"))
 (def CompositeDisposable (.-CompositeDisposable ashell))
 
 (def output-editor-title "Clojure REPL History")
@@ -43,6 +45,23 @@
 
 (defn show-current-history [editor]
   (.setText editor (nth (:repl-history @state) (:current-history-index @state))))
+
+(defn get-project-clj [project-path]
+  (console-log "Looking for project.clj at " project-path "/project.clj")
+  (.existsSync fs (str project-path + "/project.clj")))
+
+(defn get-project-directory-with-file [root-project-path file-path]
+  (loop [directories (butlast (string/split file-path #"/"))
+         project-path root-project-path]
+    (if (get-project-clj project-path)
+      project-path
+      (recur (next directories) (str project-path "/" (first directories))))))
+
+(defn get-project-path []
+  (let [buffer (.getBuffer (.getActiveTextEditor (.-workspace js/atom)))
+        path (.getPath buffer)
+        [directory-path, relative-path] (.relativizePath (.-project js/atom) path)]
+    (get-project-directory-with-file directory-path relative-path)))
 
 ;; TODO: Support destroying multiple editors with a shared buffer.
 (defn close-editor
