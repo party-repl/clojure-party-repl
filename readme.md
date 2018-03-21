@@ -182,4 +182,4 @@ Copyright 2018 Tomomi Livingstone.
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
-Balloon icon made by [Freepik](https://www.freepik.com) from [Flaticon](https://www.flaticon.com), licensed under [CC 3.0 BY](http://creativecommons.org/licenses/by/3.0/).
+Balloon icon made by [Freepik](https://www.freepik.com) from [Flaticon](https://www.flaticon.com), licensed under [CC 3.0 BY](https://creativecommons.org/licenses/by/3.0).
