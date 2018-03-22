@@ -146,6 +146,7 @@ Exported functions can be linked to keybindings and menu items, checkout the sta
 
 ### User interface improvements
 - [ ] Integrate with Atom IDE
+- [ ] When executing code, temporarily highlight the top-level form, or the selected code being set to the REPL. Likewise, somehow indicate when there's a syntax error preventing a top-level form from being found.
 - [ ] Create a new kind of Pane which holds both the REPL input-editor and output-editor.
 - [ ] Add buttons to REPL Pane like "Execute" and "Clear history".
 - [ ] Make the "Execute" button dynamically switch to "Cancel" when a long running command is executed (this should work seamlessly on the guest side too).
