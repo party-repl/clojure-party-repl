@@ -122,11 +122,13 @@ Exported functions can be linked to keybindings and menu items, checkout the sta
 ## Roadmap
 
 ### Core features
+- [x] Support for Leiningen
 - [ ] Support for Boot
-- [ ] Support connecting into remote Socket REPLs
-- [ ] ClojureScript support
-- [ ] Add unRepl support
+- [x] Support for remote nREPLs
+- [ ] Support for Socket REPLs (clojure.core style REPLs)
+- [ ] unRepl support
 - [ ] Add line number and file metadata to stacktraces.
+- [ ] ClojureScript support
 
 
 ### Pair programming / Teletype support
@@ -143,6 +145,8 @@ Exported functions can be linked to keybindings and menu items, checkout the sta
 
 
 ### User interface improvements
+- [ ] Integrate with Atom IDE
+- [ ] When executing code, temporarily highlight the top-level form or the selected code being sent to the REPL. Likewise, somehow indicate when there's a syntax error preventing a top-level form from being found.
 - [ ] Create a new kind of Pane which holds both the REPL input-editor and output-editor.
 - [ ] Add buttons to REPL Pane like "Execute" and "Clear history".
 - [ ] Make the "Execute" button dynamically switch to "Cancel" when a long running command is executed (this should work seamlessly on the guest side too).
@@ -151,6 +155,7 @@ Exported functions can be linked to keybindings and menu items, checkout the sta
 
 
 ### OS support
+- [x] macOS support
 - [x] Linux support
 - [ ] Windows support, probably not going to do it. PRs welcome.
 
@@ -172,7 +177,6 @@ Exported functions can be linked to keybindings and menu items, checkout the sta
 is dedicated to stdout/stderr. Additionally, add an option to
 hook into all stdout/err streams on a remote socket REPL, so
 all output can be seen even from other threads.
-- [ ] Show results next to the code in the file that generated them like proto-repl.
 - [ ] Sayid debugging support
 - [ ] The ability to add breakpoints or wrap seamless print statements around blocks of code. These would be a first-class UI feature, imagine a purple box wrapped around code that would print it out, every time
 
@@ -182,4 +186,4 @@ Copyright 2018 Tomomi Livingstone.
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
-Balloon icon made by [Freepik](https://www.freepik.com) from [Flaticon](https://www.flaticon.com), licensed under [CC 3.0 BY](http://creativecommons.org/licenses/by/3.0/).
+Balloon icon made by [Freepik](https://www.freepik.com) from [Flaticon](https://www.flaticon.com), licensed under [CC 3.0 BY](https://creativecommons.org/licenses/by/3.0).

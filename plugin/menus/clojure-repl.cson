@@ -1,7 +1,7 @@
 'context-menu':
   'atom-text-editor': [
     {
-      'label': 'Execute Code clojure-repl'
+      'label': 'Execute Code with Party REPL'
       'command': 'clojure-repl:sendToRepl'
     }
   ]
@@ -12,11 +12,11 @@
       'label': 'Clojure Repl'
       'submenu': [
         {
-          'label': 'Start Local Repl'
+          'label': 'Start Local REPL'
           'command': 'clojure-repl:startRepl'
         },
         {
-          'label': 'Connect Remote Repl'
+          'label': 'Connect to Remote nREPL Server'
           'command': 'clojure-repl:connectToNrepl'
         },
         {
