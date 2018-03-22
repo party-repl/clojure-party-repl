@@ -1,12 +1,16 @@
 (ns clojure-repl.core
+  (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [clojure.string :as string]
             [cljs.nodejs :as node]
+            [cljs.core.async :refer [chan <! >!] :as async]
             [clojure-repl.common :as common :refer [state console-log]]
             [clojure-repl.host :as host]
             [clojure-repl.guest :as guest]
             [clojure-repl.local-repl :as local-repl]
             [clojure-repl.remote-repl :as remote-repl]
-            [clojure-repl.execution :as execution]))
+            [clojure-repl.execution :as execution]
+            [clojure-repl.connection-panel :as panel]
+            [clojure-repl.strings :as strings]))
 
 (def ashell (node/require "atom"))
 (def commands (.-commands js/atom))
@@ -18,18 +22,19 @@
 (defn start-local-repl
   "Exported plugin command. Starts new processes to run the repl."
   []
-  (console-log "clojure-repl started!")
+  (console-log "clojure-repl is whipping up a new local repl!")
   (host/create-editors)
   (local-repl/start))
 
 ;; TODO: Create a UI instead of hardcoding this.
 (defn connect-to-nrepl
   "Exported plugin command. Connects to an existing nrepl by host and port."
-  ([event]
-   (console-log "connect-to-nrepl startup event:" event)
-   (console-log "clojure-repl on the case!")
-   (host/create-editors)
-   (remote-repl/connect-to-remote-repl {:host "localhost" :port 12345})))
+  [event]
+  (console-log "clojure-repl on the case!")
+  (go
+    (when-let [address (<! (panel/prompt-connection-panel strings/nrepl-connection-message))]
+      (host/create-editors)
+      (remote-repl/connect-to-remote-repl address))))
 
 (defn send-to-repl
   "Exported plugin command. Grabs text from the appropriate editor, depending on
@@ -95,6 +100,7 @@
   []
   (console-log "Activating clojure-repl...")
   (add-commands)
+  (panel/create-connection-panel)
   (guest/look-for-teletyped-repls))
 
 (defn deactivate
