@@ -49,7 +49,7 @@
     (swap! repl-state assoc :connection nil
                             :session nil
                             :port nil
-                            :current-ns nil)))
+                            :current-ns "user")))
 
 (defn namespace-not-found? [message]
   (when (.-status message)
@@ -137,7 +137,6 @@
                                                        (console-log "Getting session from connection..." (js->clj message))
                                                        (swap! repl-state assoc :session (get-in (js->clj message) [0 "new-session"]))
                                                        (when-let [init-code (:init-code @repl-state)]
-                                                         (swap! repl-state assoc :init-code nil)
                                                          (send-to-repl init-code {}))
                                                        (.on (.-messageStream connection) "messageSequence" handle-messages)))))))
 
