@@ -1,7 +1,8 @@
 (ns clojure-repl.repl
   (:require [cljs.nodejs :as node]
             [clojure.string :as string]
-            [clojure-repl.common :as common :refer [state
+            [clojure-repl.common :as common :refer [repls
+                                                    repl-state
                                                     append-to-editor
                                                     add-repl-history
                                                     console-log]]))
@@ -14,24 +15,6 @@
 (def process (node/require "process"))
 (def nrepl (node/require "nrepl-client"))
 (def net (node/require "net"))
-
-;; TODO: Merge with the common/state
-(def repls
-  (atom {}))
-
-;; Template for repl's state
-(def repl-state
-  {:current-working-directory ""
-   :lein-path "/usr/local/bin" ;; TODO: Read this from Settings
-   :process-env nil
-   :lein-process nil
-   :connection nil
-   :session nil
-   :host "localhost"
-   :port nil
-   :current-ns "user"
-   :init-code nil
-   :type nil})
 
 (defn append-to-output-editor
   "Appends text at the end of the output editor. Returns true to notify
@@ -116,7 +99,7 @@
 
 (defn connect-to-nrepl
   "Connects to nrepl using already discovered host and port information."
-  []
+  [project-name]
   (console-log "Connecting to nrepl...")
   (when (:connection @repl-state)
     (close-connection))
@@ -140,23 +123,26 @@
                                                          (send-to-repl init-code {}))
                                                        (.on (.-messageStream connection) "messageSequence" handle-messages)))))))
 
+(defn add-repl [project-name & options]
+  (swap! repls assoc project-name (-> (apply assoc repl-state options)
+                                      (assoc :subscriptions (CompositeDisposable.)))))
+
 (defn stop-process
   "Closes the nrepl connection and kills the lein process. This will also kill
   all the child processes created by the lein process."
-  []
-  (let [lein-process (:lein-process @repl-state)
-        connection (:connection @repl-state)]
-    (when connection
-      (close-connection))
-    (when-not (contains? #{:remote nil} lein-process)
-      (console-log "Killing process... " (.-pid lein-process))
-      (.removeAllListeners lein-process)
-      (.removeAllListeners (.-stdout lein-process))
-      (.removeAllListeners (.-stderr lein-process))
-      (.kill process (.-pid lein-process) "SIGKILL")
-      (swap! repl-state assoc :current-working-directory nil
-                              :process-env nil
-                              :lein-process nil))))
+  [project-name]
+  (when-let [state (get @repls project-name)]
+    (let [lein-process (:lein-process state)
+          connection (:connection state)]
+      (when connection
+        (close-connection))
+      (when-not (contains? #{:remote nil} lein-process)
+        (console-log "Killing process... " (.-pid lein-process))
+        (.removeAllListeners lein-process)
+        (.removeAllListeners (.-stdout lein-process))
+        (.removeAllListeners (.-stderr lein-process))
+        (.kill process (.-pid lein-process) "SIGKILL"))
+      (swap! repls assoc project-name nil))))
 
 (defn interrupt-process [])
 

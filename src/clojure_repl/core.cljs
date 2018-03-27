@@ -24,7 +24,7 @@
   []
   (console-log "clojure-repl is whipping up a new local repl!")
   (host/create-editors)
-  (local-repl/start))
+  (local-repl/start-local-repl))
 
 ;; TODO: Create a UI instead of hardcoding this.
 (defn connect-to-nrepl

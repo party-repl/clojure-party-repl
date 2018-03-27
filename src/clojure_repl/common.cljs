@@ -15,6 +15,32 @@
 
 ;; TODO: Support having multiple repls for different projects.
 
+(def repls (atom {}))
+
+(def editor-to-project-name (atom {}))
+
+;; Template for repl's state
+(def repl-state
+  {:current-working-directory ""
+   :lein-path "/usr/local/bin" ;; TODO: Read this from Settings
+   :process-env nil
+   :lein-process nil
+   :connection nil
+   :session nil
+   :host "localhost"
+   :port nil
+   :current-ns "user"
+   :init-code nil
+   :type nil
+   :subscriptions nil
+   :process nil
+   :host-input-editor nil
+   :host-output-editor nil
+   :guest-input-editor nil
+   :guest-output-editor nil
+   :repl-history (list)
+   :current-history-index -1})
+
 (def state
   (atom {:subscriptions (CompositeDisposable.)
          :process nil
@@ -32,6 +58,10 @@
   [& output]
   (apply (.-log js/console) output))
 
+(defn show-error [& error]
+  (apply (.-error js/console) error)
+  (apply (.-addError (.-notifications js/atom)) error))
+
 (defn add-subscription
   "This should be wrapped whenever adding any subscriptions in order to dispose
   them later."
@@ -47,6 +77,8 @@
 (defn show-current-history [editor]
   (.setText editor (nth (:repl-history @state) (:current-history-index @state))))
 
+;; TODO: Look for the project.clj file and decide which path to use.
+;; TODO: Warn user when project.clj doesn't exist in the project.
 (defn get-project-clj [project-path]
   (console-log "Looking for project.clj at " project-path "/project.clj")
   (.existsSync fs (str project-path + "/project.clj")))
@@ -56,13 +88,38 @@
          project-path root-project-path]
     (if (get-project-clj project-path)
       project-path
-      (recur (next directories) (str project-path "/" (first directories))))))
+      (when (coll? directories)
+        (recur (next directories) (str project-path "/" (first directories)))))))
 
-(defn get-project-path []
-  (let [buffer (.getBuffer (.getActiveTextEditor (.-workspace js/atom)))
+;; TODO: Support having shared project folders. Right now it assumes that each
+;;       project folder that's opened in Atom is an independent project. It
+;;       should, however, allow user to open one big folder that contains
+;;       multiple projects.
+(defn get-project-path [& [text-editor]]
+  (let [editor (or text-editor (.getActiveTextEditor (.-workspace js/atom)))
+        buffer (.getBuffer editor)
         path (.getPath buffer)
         [directory-path, relative-path] (.relativizePath (.-project js/atom) path)]
-    (get-project-directory-with-file directory-path relative-path)))
+    (when directory-path
+      (get-project-directory-with-file directory-path relative-path))))
+
+(defmulti get-project-name
+  (fn [from-object] (type from-object)))
+
+(defmethod get-project-name String [project-path]
+  (last (string/split project-path #"/")))
+
+(defmethod get-project-name TextEditor [editor]
+  (if-let [project-name (get @editor-to-project-name editor)]
+    project-name
+    (when-let [project-path (get-project-path editor)]
+      (get-project-path project-path))))
+
+(defn get-project-name [editor]
+  (if-let [project-name (get @editor-to-project-name editor)]
+    project-name
+    (when-let [project-path (get-project-path editor)]
+      (last (string/split project-path #"/")))))
 
 ;; TODO: Support destroying multiple editors with a shared buffer.
 (defn close-editor
@@ -96,3 +153,8 @@
       (.insertNewlineBelow editor))
     (.scrollToBottom editor)
     (.moveToBottom editor)))
+
+(defn add-repl [project-name & args]
+  (swap! repls update
+               project-name
+               #(apply assoc % args)))

@@ -5,7 +5,9 @@
                                                 stop-process
                                                 connect-to-nrepl
                                                 append-to-output-editor]]
-            [clojure-repl.common :as common :refer [console-log]]))
+            [clojure-repl.common :as common :refer [console-log
+                                                    get-project-path
+                                                    get-project-name]]))
 
 ;; TODO: Switch to unrepl
 ;; TODO: Support having multiple REPLs
@@ -59,20 +61,12 @@
                              (console-log "Exiting repl... " code " " signal)
                              (swap! repl-state assoc :lein-process nil))))
 
-(defn get-project-path []
-  (first (.getPaths (.-project js/atom))))
-
-;; TODO: Look for the project.clj file and decide which path to use.
-;; TODO: Warn user when project.clj doesn't exist in the project.
-(defn get-project-clj [project-path]
-  (console-log "Looking for project.clj at " project-path "/project.clj")
-  (.existsSync fs (str project-path + "/project.clj")))
-
 (defn start-lein-process
   "Starts a lein repl process on project-path."
   [env & args]
   (console-log "Starting lein process...")
   (let [project-path (get-project-path)
+        project-name (get-project-name project-path)
         process-env (clj->js {"cwd" project-path
                               "env" (goog.object.set env "PWD" project-path)})
         lein-process (.spawn child-process (first lein-exec) (clj->js (next lein-exec)) process-env)]
@@ -90,6 +84,6 @@
     (goog.object.set env "PATH" (:lein-path @repl-state))
     env))
 
-(defn start []
+(defn start-local-repl []
   (stop-process)
   (start-lein-process (get-env)))
