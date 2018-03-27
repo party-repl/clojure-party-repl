@@ -105,7 +105,7 @@
   [editor]
   (let [buffer (.getBuffer editor)
         code (string/replace (.getText buffer) execute-comment "")]
-    (execute code)
+    (execute (string/trim code))
     (.setText editor "")))
 
 (defn prepare-to-execute
