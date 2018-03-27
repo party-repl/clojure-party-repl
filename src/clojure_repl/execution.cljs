@@ -104,8 +104,11 @@
   "Gets the text in the input editor and sends it over to repl."
   [editor]
   (let [buffer (.getBuffer editor)
-        code (string/replace (.getText buffer) execute-comment "")]
-    (execute (string/trim code))
+        text (string/trim (.getText buffer))
+        code (if (string/ends-with? text execute-comment)
+               (string/trim (subs text 0 (- (count text) (count execute-comment))))
+               text)]
+    (execute code)
     (.setText editor "")))
 
 (defn prepare-to-execute
