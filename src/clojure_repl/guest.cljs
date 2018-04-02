@@ -19,6 +19,7 @@
   [editor]
   (when-not (:guest-output-editor @state)
     (swap! state assoc :guest-output-editor editor)
+    (add-subscription (.onDidChange editor #(.scrollToBottom (.-element editor))))
     (add-subscription (.onDidDestroy editor #(swap! state assoc :guest-output-editor nil)))))
 
 (defn link-input-editor

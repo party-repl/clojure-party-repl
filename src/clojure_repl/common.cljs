@@ -151,7 +151,7 @@
     (.insertText editor text)
     (when add-newline?
       (.insertNewlineBelow editor))
-    (.scrollToBottom editor)
+    (.scrollToBottom (.-element editor))
     (.moveToBottom editor)))
 
 (defn add-repl [project-name & args]

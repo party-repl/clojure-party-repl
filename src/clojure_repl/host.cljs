@@ -39,7 +39,7 @@
                 (set! (.-isModified editor) (fn [] false))
                 (set! (.-isModified (.getBuffer editor)) (fn [] false))
                 (.setSoftWrapped editor true)
-                (.add (.-classList (.-editorElement editor)) "repl-history")
+                (.add (.-classList (.-element editor)) "repl-history")
                 (set-grammar editor)
                 (.moveToBottom editor)
                 (swap! state assoc :host-output-editor editor)
@@ -47,6 +47,12 @@
                                                           (swap! state assoc :host-output-editor nil)
                                                           (repl/stop-process)
                                                           (dispose))))))))
+
+(defn find-non-blank-last-row [buffer]
+  (let [last-row (.getLastRow buffer)]
+    (if (.isRowBlank buffer last-row)
+      (.previousNonBlankRow buffer last-row)
+      last-row)))
 
 ;; TODO: Set a placeholder text to notify user when repl is ready.
 (defn create-input-editor
@@ -60,14 +66,16 @@
                 (set! (.-isModified editor) (fn [] false))
                 (set! (.-isModified (.getBuffer editor)) (fn [] false))
                 (.setSoftWrapped editor true)
-                (.add (.-classList (.-editorElement editor)) "repl-entry")
+                (.add (.-classList (.-element editor)) "repl-entry")
                 (set-grammar editor)
                 (swap! state assoc :host-input-editor editor)
                 (add-subscription (.onDidStopChanging editor (fn [event]
                                                                (let [buffer (.getBuffer editor)
-                                                                     last-text (.getLastLine buffer)]
-                                                                 (when (ends-with? (trim last-text) execute-comment)
-                                                                   (execution/execute-entered-text editor))))))
+                                                                     non-blank-row (find-non-blank-last-row buffer)
+                                                                     last-text (.lineForRow buffer non-blank-row)]
+                                                                  (when (ends-with? (trim last-text) execute-comment)
+                                                                    (.deleteRows buffer (inc non-blank-row) (inc (.getLastRow buffer)))
+                                                                    (execution/execute-entered-text editor))))))
                 (add-subscription (.onDidDestroy editor (fn [event]
                                                           (swap! state assoc :host-input-editor nil)
                                                           (repl/stop-process)
