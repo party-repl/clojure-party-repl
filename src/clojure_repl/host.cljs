@@ -39,7 +39,7 @@
                 (set! (.-isModified editor) (fn [] false))
                 (set! (.-isModified (.getBuffer editor)) (fn [] false))
                 (.setSoftWrapped editor true)
-                (.add (.-classList (.-editorElement editor)) "repl-history")
+                (.add (.-classList (.-element editor)) "repl-history")
                 (set-grammar editor)
                 (.moveToBottom editor)
                 (swap! state assoc :host-output-editor editor)
@@ -66,7 +66,7 @@
                 (set! (.-isModified editor) (fn [] false))
                 (set! (.-isModified (.getBuffer editor)) (fn [] false))
                 (.setSoftWrapped editor true)
-                (.add (.-classList (.-editorElement editor)) "repl-entry")
+                (.add (.-classList (.-element editor)) "repl-entry")
                 (set-grammar editor)
                 (swap! state assoc :host-input-editor editor)
                 (add-subscription (.onDidStopChanging editor (fn [event]
