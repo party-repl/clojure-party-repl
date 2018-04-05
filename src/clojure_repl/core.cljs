@@ -3,7 +3,8 @@
   (:require [clojure.string :as string]
             [cljs.nodejs :as node]
             [cljs.core.async :refer [chan <! >!] :as async]
-            [clojure-repl.common :as common :refer [state console-log]]
+            [clojure-repl.common :as common :refer [state repls console-log
+                                                    show-error]]
             [clojure-repl.host :as host]
             [clojure-repl.guest :as guest]
             [clojure-repl.local-repl :as local-repl]
@@ -23,8 +24,12 @@
   "Exported plugin command. Starts new processes to run the repl."
   []
   (console-log "clojure-repl is whipping up a new local repl!")
-  (host/create-editors)
-  (local-repl/start-local-repl))
+  (if-let [project-path (common/get-project-path)]
+    (let [project-name (common/get-project-name-from-path project-path)]
+      (common/add-repl project-name)
+      (host/create-editors project-name)
+      (local-repl/start-local-repl project-path))
+    (show-error "Current file is not located inside one of projects")))
 
 ;; TODO: Create a UI instead of hardcoding this.
 (defn connect-to-nrepl
@@ -32,45 +37,78 @@
   [event]
   (console-log "clojure-repl on the case!")
   (go
-    (when-let [address (<! (panel/prompt-connection-panel strings/nrepl-connection-message))]
-      (host/create-editors)
-      (remote-repl/connect-to-remote-repl address))))
+    (when-let [{:keys [host port]} (<! (panel/prompt-connection-panel strings/nrepl-connection-message))]
+      (common/add-repl :remote-repl
+                :host host
+                :port port
+                :lein-process :remote
+                :init-code "(.name *ns*)"
+                :type :nrepl)
+      (host/create-editors :remote-repl)
+      (remote-repl/connect-to-remote-repl :remote-repl))))
 
+(defn get-project-name-from-input-editor [editor]
+  (some (fn [project-name]
+          (console-log "Checking if repl exists for the editor " project-name " " @repls)
+          (console-log "-----> " (= editor (get-in @repls [project-name :host-input-editor])))
+          (when (or (= editor (get-in @repls [project-name :guest-input-editor]))
+                    (= editor (get-in @repls [project-name :host-input-editor])))
+            project-name))
+        (keys @repls)))
+
+;; TODO: Execute code at the most recent repl when project name could not be
+;;       found from the text editor.
 (defn send-to-repl
   "Exported plugin command. Grabs text from the appropriate editor, depending on
   the context and sends it to the repl."
   []
   (let [editor (.getActiveTextEditor (.-workspace js/atom))]
-    (cond
-      (= editor (:guest-input-editor @state)) (execution/prepare-to-execute editor)
-      (= editor (:host-input-editor @state)) (execution/execute-entered-text editor)
-      (.isEmpty (.getLastSelection editor)) (execution/execute-top-level-form editor)
-      :else (execution/execute-selected-text editor))))
+    (if-let [project-name (get-project-name-from-input-editor editor)]
+      (cond
+        (= editor (get-in @repls [project-name :guest-input-editor])) (execution/prepare-to-execute editor)
+        (= editor (get-in @repls [project-name :host-input-editor])) (execution/execute-entered-text project-name editor))
+      (if-let [project-name (or (common/get-project-name-from-editor editor)
+                                (get @state :most-recent-repl-project-name))]
+        (cond
+          (.isEmpty (.getLastSelection editor)) (execution/execute-top-level-form project-name editor)
+          :else (execution/execute-selected-text project-name editor))
+        (console-log "No matching project-name for the editor")))))
+
+(defn show-current-history [project-name editor]
+  (.setText editor
+            (nth (get-in @repls [project-name :repl-history])
+                 (get-in @repls [project-name :current-history-index]))))
 
 (defn show-older-repl-history
   "Exported plugin command. Replaces the content of the input-editor with an
   older history item."
   [event]
-  (let [editor (.getActiveTextEditor (.-workspace js/atom))]
-    (when (or (= editor (:guest-input-editor @state))
-              (= editor (:host-input-editor @state)))
-      (when (< (:current-history-index @state) (count (:repl-history @state)))
-        (swap! state update :current-history-index inc))
-      (when (> (count (:repl-history @state)) (:current-history-index @state))
-        (common/show-current-history editor)))))
+  (let [editor (.getActiveTextEditor (.-workspace js/atom))
+        project-name (get-project-name-from-input-editor editor)]
+    (when (and project-name
+              (or (= editor (get-in @repls [project-name :guest-input-editor]))
+                  (= editor (get-in @repls [project-name :host-input-editor]))))
+      (when (< (get-in @repls [project-name :current-history-index])
+               (count (get-in @repls [project-name :repl-history])))
+        (swap! repls update project-name #(update % :current-history-index inc)))
+      (when (> (count (get-in @repls [project-name :repl-history]))
+               (get-in @repls [project-name :current-history-index]))
+        (show-current-history project-name editor)))))
 
 (defn show-newer-repl-history
   "Exported plugin command. Replaces the content of the input-editor with a
   newer history item."
   [event]
-  (let [editor (.getActiveTextEditor (.-workspace js/atom))]
-    (when (or (= editor (:guest-input-editor @state))
-              (= editor (:host-input-editor @state)))
-      (when (>= (:current-history-index @state) 0)
-        (swap! state update :current-history-index dec))
-      (if (> 0 (:current-history-index @state))
+  (let [editor (.getActiveTextEditor (.-workspace js/atom))
+        project-name (get-project-name-from-input-editor editor)]
+    (when (and project-name
+              (or (= editor (get-in @repls [project-name :guest-input-editor]))
+                  (= editor (get-in @repls [project-name :host-input-editor]))))
+      (when (>= (get-in @repls [project-name :current-history-index]) 0)
+        (swap! repls update project-name #(update % :current-history-index dec)))
+      (if (> 0 (get-in @repls [project-name :current-history-index]))
         (.setText editor "")
-        (common/show-current-history editor)))))
+        (show-current-history project-name editor)))))
 
 (defn ^:private add-commands
   "Exports commands and makes them available in Atom. Exported commands also
@@ -91,8 +129,13 @@
   [info]
   (let [dont-save-if (get (js->clj info) "dontSaveIf")]
     (dont-save-if (fn [pane-item]
-                    (some #(string/ends-with? (.getPath pane-item) %1)
+                    (some #(string/includes? (.getPath pane-item) %1)
                           [common/output-editor-title common/input-editor-title])))))
+
+(defn dispose-all []
+  (doseq [project-name (keys @repls)]
+    (guest/dispose :guest)
+    (host/dispose project-name)))
 
 (defn activate
   "Initializes the plugin, called automatically by Atom, during startup or if
@@ -108,8 +151,7 @@
   disabled or uninstalled."
   []
   (console-log "Deactivating clojure-repl...")
-  (host/dispose)
-  (guest/dispose)
+  (dispose-all)
   (doseq [disposable @disposables]
     (.dispose disposable))
   (reset! disposables []))

@@ -1,11 +1,11 @@
 (ns clojure-repl.guest
-  (:require [clojure.string :as string :refer [ends-with?]]
+  (:require [clojure.string :as string :refer [starts-with?]]
             [clojure-repl.common :as common :refer [output-editor-title
                                                     input-editor-title
                                                     execute-comment
                                                     add-subscription
                                                     destroy-editor
-                                                    state
+                                                    repls
                                                     console-log]]))
 
 ;; TODO: Fix the problem of attaching more than one subscription on
@@ -16,19 +16,26 @@
 
 (defn link-output-editor
   "Keep the reference to the output editor in the state."
-  [editor]
-  (when-not (:guest-output-editor @state)
-    (swap! state assoc :guest-output-editor editor)
-    (add-subscription (.onDidChange editor #(.scrollToBottom (.-element editor))))
-    (add-subscription (.onDidDestroy editor #(swap! state assoc :guest-output-editor nil)))))
+  [project-name editor]
+  (when-not (get-in @repls [project-name :guest-output-editor])
+    (swap! repls update project-name #(assoc % :guest-output-editor editor))
+    (add-subscription project-name
+                      (.onDidDestroy editor
+                                     (fn [event]
+                                       (swap! repls update project-name #(assoc % :guest-output-editor nil)))))))
 
 (defn link-input-editor
   "Keep the reference to the input editor in the state."
-  [editor]
-  (when-not (:guest-input-editor @state)
-    (swap! state assoc :guest-input-editor editor)
-    (add-subscription (.onDidDestroy editor #(swap! state assoc :guest-input-editor nil)))))
+  [project-name editor]
+  (when-not (get-in @repls [project-name :guest-input-editor])
+    (swap! repls update project-name #(assoc % :guest-input-editor editor))
+    (add-subscription project-name
+                      (.onDidDestroy editor
+                                     (fn [event]
+                                       (swap! repls update project-name #(assoc % :guest-input-editor nil)))))))
 
+; TODO: Properly re-find the guest repls
+;; TODO: Allow multiple guest repls by parsing the editor titles
 (defn look-for-teletyped-repls
   "Whenever a new text editor opens in Atom, check the title and look for repl
   editors that opened through teletype."
@@ -38,17 +45,16 @@
                              (let [editor (.-textEditor event)
                                    title (.getTitle editor)]
                                (console-log "Guest Repl? " title)
-                               (condp #(and (not= %2 %1) (ends-with? %2 %1)) title
-                                 output-editor-title (link-output-editor editor)
-                                 input-editor-title (link-input-editor editor)
+                               (condp #(and (string/includes? %2 %1) (not (starts-with? %2 %1))) title
+                                 output-editor-title (link-output-editor :guest editor)
+                                 input-editor-title (link-input-editor :guest editor)
                                  (console-log "No matching repl...")))))
-      (add-subscription)))
+      (partial add-subscription :guest)))
 
 (defn destroy-editors
   "Destroys both output and input editors that opened through teletype."
-  []
-  (destroy-editor :guest-output-editor)
-  (destroy-editor :guest-input-editor))
+  [project-name]
+  (destroy-editor project-name :guest-output-editor)
+  (destroy-editor project-name :guest-input-editor))
 
-(defn dispose []
-  (destroy-editors))
+(def dispose destroy-editors)

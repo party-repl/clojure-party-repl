@@ -2,7 +2,7 @@
   (:require [cljs.nodejs :as node]
             [clojure.string :as string]
             [clojure-repl.common :as common :refer [repls
-                                                    repl-state
+                                                    state
                                                     append-to-editor
                                                     add-repl-history
                                                     console-log]]))
@@ -19,20 +19,22 @@
 (defn append-to-output-editor
   "Appends text at the end of the output editor. Returns true to notify
   handle-messages that the text got appended."
-  [text & {:keys [add-newline?] :or {add-newline? true}}]
-  (append-to-editor (:host-output-editor @state) text :add-newline? add-newline?)
-  true)
+  [project-name text & {:keys [add-newline?] :or {add-newline? true}}]
+  (when-let [output-editor (get-in @repls [project-name :host-output-editor])]
+    (append-to-editor output-editor text :add-newline? add-newline?)
+    true))
 
 (defn close-connection
   "Closes the connection to the repl."
-  []
+  [project-name]
   (console-log "Closing connection...")
-  (when-let [connection (:connection @repl-state)]
-    (.close connection (:session @repl-state) (fn []))
-    (swap! repl-state assoc :connection nil
-                            :session nil
-                            :port nil
-                            :current-ns "user")))
+  (when (get project-name @repls)
+    (when-let [connection (get-in @repls [project-name :connection])]
+      (.close connection (get-in @repls [project-name :session]) (fn []))
+      (swap! repls update project-name #(assoc % :connection nil
+                                                 :session nil
+                                                 :port nil
+                                                 :current-ns "user")))))
 
 (defn namespace-not-found? [message]
   (when (.-status message)
@@ -40,28 +42,28 @@
 
 (defn handle-message
   "Append error message or results with matching session to the output editor."
-  [message]
+  [project-name message]
   (console-log "Receiving result from repl... " (.-status message) " " (.-session message) " " (.-out message) " " (.-value message) " " (.-err message))
   (if (.-err message)
-    (append-to-output-editor (.-err message))
-    (when (and (= (.-session message) (:session @repl-state))
+    (append-to-output-editor project-name (.-err message))
+    (when (and (= (.-session message) (get-in @repls [project-name :session]))
                (or (.-out message) (.-value message)))
       (console-log "Result arrived with ns: " (.-ns message))
       (when (.-ns message)
-        (swap! repl-state assoc :current-ns (.-ns message)))
+        (swap! repls update project-name #(assoc % :current-ns (.-ns message))))
       (when (.-out message)
-        (append-to-output-editor (string/trim (.-out message))))
+        (append-to-output-editor project-name (string/trim (.-out message))))
       (when (.-value message)
-        (append-to-output-editor (.-value message))))))
+        (append-to-output-editor project-name (.-value message))))))
 
 (defn handle-messages
   "Looks through messages received from repl. If any of the messages got
   appended to the editor, append the namespace prompt at the end."
-  [id messages]
-  (console-log "Handling messages...")
+  [project-name id messages]
+  (console-log "Handling messages... " project-name " " id " " messages)
   (when (and (not-any? namespace-not-found? messages)
-             (some some? (map handle-message messages)))
-    (append-to-output-editor (str (:current-ns @repl-state) "=> ") :add-newline? false)))
+             (some some? (map #(handle-message project-name %) messages)))
+    (append-to-output-editor project-name (str (get-in @repls [project-name :current-ns]) "=> ") :add-newline? false)))
 
 (defn wrap-to-catch-exception
   "Wraps the code with try-catch in order to get stacktraces if error happened."
@@ -79,79 +81,76 @@
   "Sends code over to repl with current namespace, or optional namespace if
   specified. When a namespace-not-found message is received, resend the code
   to the current namespace."
-  [code & [options]]
+  [project-name code & [options]]
   (console-log "Sending code to repl... " code " with " options)
-  (let [current-ns (or (:ns options) (:current-ns @repl-state))
+  (let [current-ns (or (:ns options) (get-in @repls [project-name :current-ns]))
         wrapped-code (wrap-to-catch-exception code)
         eval-options (clj->js {"op" "eval"
                                "code" wrapped-code
                                "ns" current-ns
-                               "session" (:session @repl-state)})]
-    (.send (:connection @repl-state) eval-options (fn [err messages]
-                                                      (try
-                                                        (console-log "Sent code through connection... " messages)
-                                                        (when (namespace-not-found? (last messages))
-                                                          (console-log "Resending code to the current namespace...")
-                                                          (send-to-repl code))
-                                                        (catch js/Exception error
-                                                          (.error js/console error)
-                                                          (.addError (.-notifications js/atom) (str "Error sending to REPL: " error))))))))
+                               "session" (get-in @repls [project-name :session])})
+        connection (get-in @repls [project-name :connection])]
+    (.send connection eval-options (fn [err messages]
+                                      (try
+                                        (console-log "Sent code through connection... " messages)
+                                        (when (namespace-not-found? (last messages))
+                                          (console-log "Resending code to the current namespace...")
+                                          (send-to-repl project-name code))
+                                        (catch js/Exception error
+                                          (.error js/console error)
+                                          (.addError (.-notifications js/atom) (str "Error sending to REPL: " error))))))))
 
 (defn connect-to-nrepl
   "Connects to nrepl using already discovered host and port information."
   [project-name]
   (console-log "Connecting to nrepl...")
-  (when (:connection @repl-state)
-    (close-connection))
-  (let [connection (.connect nrepl (clj->js {"host" (:host @repl-state)
-                                             "port" (:port @repl-state)
+  (when (get project-name @repls)
+    (close-connection project-name))
+  (let [connection (.connect nrepl (clj->js {"host" (get-in @repls [project-name :host])
+                                             "port" (get-in @repls [project-name :port])
                                              "verbose" false}))]
-    (swap! repl-state assoc :connection connection)
+    (swap! repls update project-name #(assoc % :connection connection))
     (.on connection "error" (fn [err]
                               (console-log "clojure-repl: connection error " err)
-                              (append-to-output-editor (str "clojure-repl: connection error " err))
-                              (swap! repl-state assoc :connection nil)))
+                              (append-to-output-editor project-name (str "clojure-repl: connection error " err))
+                              (swap! repls update project-name #(assoc % :connection nil))))
     (.once connection "connect" (fn []
                                   (console-log "!!!Connected to nrepl!!!")
                                   (.on connection "finish" (fn []
                                                              (console-log "Connection finished...")
-                                                             (swap! repl-state assoc :connection nil)))
+                                                             (swap! repls update project-name #(assoc % :connection nil))))
                                   (.clone connection (fn [err message]
                                                        (console-log "Getting session from connection..." (js->clj message))
-                                                       (swap! repl-state assoc :session (get-in (js->clj message) [0 "new-session"]))
-                                                       (when-let [init-code (:init-code @repl-state)]
-                                                         (send-to-repl init-code {}))
-                                                       (.on (.-messageStream connection) "messageSequence" handle-messages)))))))
-
-(defn add-repl [project-name & options]
-  (swap! repls assoc project-name (-> (apply assoc repl-state options)
-                                      (assoc :subscriptions (CompositeDisposable.)))))
+                                                       (swap! repls update project-name #(assoc % :session (get-in (js->clj message) [0 "new-session"])))
+                                                       (when-let [init-code (get-in @repls [project-name :init-code])]
+                                                         (send-to-repl project-name init-code {}))
+                                                       (let [handler (partial handle-messages project-name)]
+                                                         (.on (.-messageStream connection) "messageSequence" handler))))))))
 
 (defn stop-process
   "Closes the nrepl connection and kills the lein process. This will also kill
   all the child processes created by the lein process."
   [project-name]
-  (when-let [state (get @repls project-name)]
-    (let [lein-process (:lein-process state)
-          connection (:connection state)]
-      (when connection
-        (close-connection))
-      (when-not (contains? #{:remote nil} lein-process)
-        (console-log "Killing process... " (.-pid lein-process))
-        (.removeAllListeners lein-process)
-        (.removeAllListeners (.-stdout lein-process))
-        (.removeAllListeners (.-stderr lein-process))
-        (.kill process (.-pid lein-process) "SIGKILL"))
-      (swap! repls assoc project-name nil))))
+  (let [lein-process (get-in @repls [project-name :lein-process])]
+    (when (get-in @repls [project-name :connection])
+      (close-connection project-name))
+    (when-not (contains? #{:remote nil} lein-process)
+      (console-log "Killing process... " (.-pid lein-process))
+      (.removeAllListeners lein-process)
+      (.removeAllListeners (.-stdout lein-process))
+      (.removeAllListeners (.-stderr lein-process))
+      (.kill process (.-pid lein-process) "SIGKILL"))
+    (swap! repls update project-name #(assoc % :lein-process nil))))
 
 (defn interrupt-process [])
 
 (defn execute-code
   "Appends the code to editor and sends it over to repl."
-  [code & [options]]
-  (let [lein-process (:lein-process @repl-state)
-        connection (:connection @repl-state)]
+  [project-name code & [options]]
+  (let [lein-process (get-in @repls [project-name :connection])
+        connection (get-in @repls [project-name :connection])]
     (when (and lein-process connection)
-      (append-to-output-editor code)
-      (add-repl-history code)
-      (send-to-repl code options))))
+      (swap! state assoc :most-recent-repl-project-name project-name)
+      (append-to-output-editor project-name code)
+      (add-repl-history project-name code)
+      (send-to-repl project-name code options))))

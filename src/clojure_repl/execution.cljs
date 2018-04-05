@@ -8,8 +8,8 @@
 
 (def ashell (node/require "atom"))
 
-(defn execute [code & [options]]
-  (repl/execute-code code options))
+(defn execute [project-name code & [options]]
+  (repl/execute-code project-name code options))
 
 (defn inside-string-or-comment?
   "Checks if the buffer position is inside the scope of string, comment, or
@@ -51,10 +51,12 @@
 
 (defn execute-selected-text
   "Gets the selected text in the editor and sends it over to repl."
-  [editor]
+  [project-name editor]
   (let [selected-range (.getSelectedBufferRange editor)
         namespace (find-namespace-for-range editor selected-range)]
-    (execute (.getSelectedText editor) (when namespace {:ns namespace}))))
+    (execute project-name
+             (.getSelectedText editor)
+             (when namespace {:ns namespace}))))
 
 (defn find-range-with-cursor
   "Searches for a range that cursor is located at."
@@ -92,23 +94,23 @@
 (defn execute-top-level-form
   "Gets the range of the top level form where the cursor is located at and sends
   the text over to repl."
-  [editor]
+  [project-name editor]
   (let [ranges (get-all-top-level-ranges editor)
         cursor (.getCursorBufferPosition editor)]
     (when-let [range (find-range-with-cursor ranges cursor)]
       (let [namespace (find-namespace-for-range editor range)
             code (string/trim (.getTextInBufferRange editor range))]
-        (execute code (when namespace {:ns namespace}))))))
+        (execute project-name code (when namespace {:ns namespace}))))))
 
 (defn execute-entered-text
   "Gets the text in the input editor and sends it over to repl."
-  [editor]
+  [project-name editor]
   (let [buffer (.getBuffer editor)
         text (string/trim (.getText buffer))
         code (if (string/ends-with? text execute-comment)
                (string/trim (subs text 0 (- (count text) (count execute-comment))))
                text)]
-    (execute code)
+    (execute project-name code)
     (.setText editor "")))
 
 (defn prepare-to-execute
