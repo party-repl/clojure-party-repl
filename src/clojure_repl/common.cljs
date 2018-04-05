@@ -42,7 +42,7 @@
    :current-history-index -1})
 
 (def state
-  (atom {:subscriptions (CompositeDisposable.)
+  (atom {:disposables []
          :lein-path "/usr/local/bin" ;; TODO: Read this from Settings
          :guest-input-editor nil
          :guest-output-editor nil

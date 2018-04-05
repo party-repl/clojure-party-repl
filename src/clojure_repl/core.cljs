@@ -17,9 +17,6 @@
 (def commands (.-commands js/atom))
 (def CompositeDisposable (.-CompositeDisposable ashell))
 
-;; TODO: Merge with the common/state
-(def disposables (atom []))
-
 (defn start-local-repl
   "Exported plugin command. Starts new processes to run the repl."
   []
@@ -114,7 +111,7 @@
   "Exports commands and makes them available in Atom. Exported commands also
   need to be added to shadow-cljs.edn."
   []
-  (swap! disposables
+  (swap! state update :disposables
          concat
          [(.add commands "atom-workspace" "clojure-repl:startRepl" start-local-repl) ;; TODO: Rename this command to startLocalRepl
           (.add commands "atom-workspace" "clojure-repl:connectToNrepl" connect-to-nrepl)
@@ -152,9 +149,9 @@
   []
   (console-log "Deactivating clojure-repl...")
   (dispose-all)
-  (doseq [disposable @disposables]
+  (doseq [disposable (get @state :disposables)]
     (.dispose disposable))
-  (reset! disposables []))
+  (swap! state assoc :disposables []))
 
 (def start
   "Activates the plugin, used for development."
