@@ -129,9 +129,9 @@
                     (some #(string/includes? (.getPath pane-item) %1)
                           [common/output-editor-title common/input-editor-title])))))
 
-(defn dispose-all []
+(defn dispose-repls []
   (doseq [project-name (keys @repls)]
-    (guest/dispose :guest)
+    (guest/dispose project-name)
     (host/dispose project-name)))
 
 (defn activate
@@ -148,7 +148,8 @@
   disabled or uninstalled."
   []
   (console-log "Deactivating clojure-repl...")
-  (dispose-all)
+  (dispose-repls)
+  (reset! repls {})
   (doseq [disposable (get @state :disposables)]
     (.dispose disposable))
   (swap! state assoc :disposables []))
