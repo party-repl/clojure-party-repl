@@ -5,6 +5,7 @@
                                                     execute-comment
                                                     add-subscription
                                                     destroy-editor
+                                                    dispose-project-if-empty
                                                     add-repl
                                                     repls
                                                     state
@@ -35,7 +36,8 @@
     (add-subscription project-name
                       (.onDidDestroy editor
                                     (fn [event]
-                                      (swap! repls update project-name #(assoc % :guest-input-editor nil)))))))
+                                      (swap! repls update project-name #(assoc % :guest-input-editor nil))
+                                      (dispose-project-if-empty project-name))))))
 
 (defn link-input-editor
   "Keep the reference to the input editor associated with the project name
@@ -48,7 +50,8 @@
     (add-subscription project-name
                       (.onDidDestroy editor
                                     (fn [event]
-                                      (swap! repls update project-name #(assoc % :guest-input-editor nil)))))))
+                                      (swap! repls update project-name #(assoc % :guest-input-editor nil))
+                                      (dispose-project-if-empty project-name))))))
 
 (defn look-for-teletyped-repls
   "Whenever a new text editor opens in Atom, check the title and look for repl

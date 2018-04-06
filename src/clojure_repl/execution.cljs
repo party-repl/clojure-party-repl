@@ -5,6 +5,7 @@
             [clojure-repl.common :as common :refer [execute-comment
                                                     append-to-editor
                                                     console-log
+                                                    show-error
                                                     repls]]
             [cljs.core.async :as async :refer [timeout <!]])
   (:require-macros [cljs.core.async.macros :refer [go]]))
@@ -58,7 +59,8 @@
     :host-input-editor (execute project-name code (when namespace {:ns namespace}))
     :guest-input-editor (append-to-editor (get-in @repls [project-name :guest-input-editor])
                                           (str code execute-comment)
-                                          :add-newline? false)))
+                                          :add-newline? false)
+    (show-error "No running repl for the project: " project-name)))
 
 (defn flash-range
   "Temporary highlight the range to provide visual feedback for users, so

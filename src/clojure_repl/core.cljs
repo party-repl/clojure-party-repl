@@ -77,12 +77,15 @@
     (if-let [project-name (get-project-name-from-input-editor editor)]
       (cond
         (= editor (get-in @repls [project-name :guest-input-editor])) (execution/prepare-to-execute editor)
-        (= editor (get-in @repls [project-name :host-input-editor])) (execution/execute-entered-text project-name editor))
+        (= editor (get-in @repls [project-name :host-input-editor])) (execution/execute-entered-text project-name editor)
+        :else (show-error "There's no running repl for the project: " project-name))
       (if-let [project-name (or (common/get-project-name-from-editor editor)
                                 (get-project-name-from-repls))]
-        (cond
-          (.isEmpty (.getLastSelection editor)) (execution/execute-top-level-form project-name editor)
-          :else (execution/execute-selected-text project-name editor))
+        (if (get @repls project-name)
+          (cond
+            (.isEmpty (.getLastSelection editor)) (execution/execute-top-level-form project-name editor)
+            :else (execution/execute-selected-text project-name editor))
+          (show-error "There's no running repl for the project: " project-name))
         (console-log "No matching project-name for the editor")))))
 
 (defn show-current-history [project-name editor]

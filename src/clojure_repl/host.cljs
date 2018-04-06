@@ -7,6 +7,7 @@
                                                     execute-comment
                                                     add-subscription
                                                     destroy-editor
+                                                    dispose-project-if-empty
                                                     repls]]))
 
 ;; TODO: Combine the output editor and input editor into a single paneItem.
@@ -45,7 +46,8 @@
                                   (.onDidDestroy editor (fn [event]
                                                           (swap! repls update project-name #(assoc % :host-output-editor nil))
                                                           (repl/stop-process project-name)
-                                                          (dispose project-name))))))))
+                                                          (dispose project-name)
+                                                          (dispose-project-if-empty project-name))))))))
 
 (defn find-non-blank-last-row [buffer]
   (let [last-row (.getLastRow buffer)]
@@ -80,7 +82,8 @@
                                   (.onDidDestroy editor (fn [event]
                                                           (swap! repls update project-name #(assoc % :host-input-editor nil))
                                                           (repl/stop-process project-name)
-                                                          (dispose project-name))))))))
+                                                          (dispose project-name)
+                                                          (dispose-project-if-empty project-name))))))))
 
 ;; TODO: Make sure to create input editor after output editor has been created.
 (defn create-editors [project-name]

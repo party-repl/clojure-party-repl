@@ -121,6 +121,13 @@
     (close-editor editor)
     (swap! repls update project-name #(assoc % editor-keyword nil))))
 
+(defn dispose-project-if-empty
+  "Remove the project state if there's no running repls for the project name."
+  [project-name]
+  (when-not (or (get-in @repls [project-name :host-input-editor])
+                (get-in @repls [project-name :guest-input-editor]))
+    (swap! repls dissoc project-name)))
+
 ;; TODO: Pretty print results
 (defn append-to-editor
   "Appends text at the end of the editor. Always append a newline following the
