@@ -13,12 +13,8 @@
 
 (def max-history-count 100)
 
-;; TODO: Support having multiple repls for different projects.
-
 ;; A map with project-name to TextEditor
 (def repls (atom {}))
-
-(def editor-to-project-name (atom {}))
 
 ;; Template for repl's state
 (def repl-state
@@ -71,7 +67,6 @@
   (swap! repls update project-name #(update % :repl-history (fn [history] (conj history code))))
   (swap! repls update project-name #(assoc % :current-history-index -1)))
 
-;; TODO: Look for the project.clj file and decide which path to use.
 ;; TODO: Warn user when project.clj doesn't exist in the project.
 (defn get-project-clj [project-path]
   (let [project-clj-path (str project-path "/project.clj")]
@@ -86,7 +81,7 @@
       (when (coll? directories)
         (recur (next directories) (str project-path "/" (first directories)))))))
 
-;; TODO: Support having shared project folders. Right now it assumes that each
+;; TODO: Support having nested project folders. Right now it assumes that each
 ;;       project folder that's opened in Atom is an independent project. It
 ;;       should, however, allow user to open one big folder that contains
 ;;       multiple projects.
@@ -94,7 +89,6 @@
   ([]
     (get-project-path (.getActiveTextEditor (.-workspace js/atom))))
   ([text-editor]
-    (console-log "---Editor--->" text-editor)
     (let [path (.getPath (.getBuffer text-editor))
           [directory-path, relative-path] (.relativizePath (.-project js/atom) path)]
       (when directory-path

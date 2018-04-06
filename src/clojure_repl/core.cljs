@@ -28,7 +28,6 @@
       (local-repl/start-local-repl project-path))
     (show-error "Current file is not located inside one of projects")))
 
-;; TODO: Create a UI instead of hardcoding this.
 (defn connect-to-nrepl
   "Exported plugin command. Connects to an existing nrepl by host and port."
   [event]
@@ -36,25 +35,40 @@
   (go
     (when-let [{:keys [host port]} (<! (panel/prompt-connection-panel strings/nrepl-connection-message))]
       (common/add-repl :remote-repl
-                :host host
-                :port port
-                :lein-process :remote
-                :init-code "(.name *ns*)"
-                :type :nrepl)
+                       :host host
+                       :port port
+                       :lein-process :remote
+                       :init-code "(.name *ns*)"
+                       :type :nrepl)
       (host/create-editors :remote-repl)
       (remote-repl/connect-to-remote-repl :remote-repl))))
 
 (defn get-project-name-from-input-editor [editor]
   (some (fn [project-name]
-          (console-log "Checking if repl exists for the editor " project-name " " @repls)
-          (console-log "-----> " (= editor (get-in @repls [project-name :host-input-editor])))
+          (console-log "Checking if repl exists for the project: " project-name)
           (when (or (= editor (get-in @repls [project-name :guest-input-editor]))
                     (= editor (get-in @repls [project-name :host-input-editor])))
             project-name))
         (keys @repls)))
 
-;; TODO: Execute code at the most recent repl when project name could not be
-;;       found from the text editor.
+(defn get-project-name-from-most-recent-repl
+  "Returns a project name for the most recently used repl if it still exists."
+  []
+  (when-let [project-name (get @state :most-recent-repl-project-name)]
+    (when (or (get-in @repls [project-name :host-input-editor])
+              (get-in @repls [project-name :guest-input-editor]))
+      project-name)))
+
+(defn get-project-name-from-repls
+  "Returns a project name for either the most recently used repl or any one in
+  the repls that exist."
+  []
+  (or (get-project-name-from-most-recent-repl)
+      (some #(when (or (get-in @repls [% :host-input-editor])
+                       (get-in @repls [% :guest-input-editor]))
+               %)
+            (keys @repls))))
+
 (defn send-to-repl
   "Exported plugin command. Grabs text from the appropriate editor, depending on
   the context and sends it to the repl."
@@ -65,7 +79,7 @@
         (= editor (get-in @repls [project-name :guest-input-editor])) (execution/prepare-to-execute editor)
         (= editor (get-in @repls [project-name :host-input-editor])) (execution/execute-entered-text project-name editor))
       (if-let [project-name (or (common/get-project-name-from-editor editor)
-                                (get @state :most-recent-repl-project-name))]
+                                (get-project-name-from-repls))]
         (cond
           (.isEmpty (.getLastSelection editor)) (execution/execute-top-level-form project-name editor)
           :else (execution/execute-selected-text project-name editor))

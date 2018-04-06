@@ -4,7 +4,10 @@
             [clojure-repl.repl :as repl]
             [clojure-repl.common :as common :refer [execute-comment
                                                     append-to-editor
-                                                    console-log]]))
+                                                    console-log
+                                                    repls]]
+            [cljs.core.async :as async :refer [timeout <!]])
+  (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (def ashell (node/require "atom"))
 
@@ -49,14 +52,33 @@
               namespace))
           namespaces)))
 
+(defn execute-on-host-or-guest
+  [project-name code namespace]
+  (condp #(some? (get-in @repls [%2 %1])) project-name
+    :host-input-editor (execute project-name code (when namespace {:ns namespace}))
+    :guest-input-editor (append-to-editor (get-in @repls [project-name :guest-input-editor])
+                                          (str code execute-comment)
+                                          :add-newline? false)))
+
+(defn flash-range
+  "Temporary highlight the range to provide visual feedback for users, so
+  they can see what code has been executed in the file."
+  [editor range]
+  (let [marker (.markBufferRange editor range)]
+    (.decorateMarker editor marker (clj->js {"type" "highlight"
+                                             "class" "executed-top-level-form"}))
+    (go
+      (<! (timeout 300))
+      (.destroy marker))))
+
 (defn execute-selected-text
   "Gets the selected text in the editor and sends it over to repl."
   [project-name editor]
   (let [selected-range (.getSelectedBufferRange editor)
-        namespace (find-namespace-for-range editor selected-range)]
-    (execute project-name
-             (.getSelectedText editor)
-             (when namespace {:ns namespace}))))
+        namespace (find-namespace-for-range editor selected-range)
+        code (.getSelectedText editor)]
+    (flash-range editor selected-range)
+    (execute-on-host-or-guest project-name code namespace)))
 
 (defn find-range-with-cursor
   "Searches for a range that cursor is located at."
@@ -74,19 +96,20 @@
   (let [ranges (atom [])
         paran-count (atom 0)
         regex (js/RegExp. "[\\{\\}\\[\\]\\(\\)]" "gm")]
-    (.scan editor regex (fn [result]
-                          (when-not (inside-string-or-comment? editor (.-start (.-range result)))
-                            (let [match-string (str (first (.-match result)))]
-                              (if (contains? open-parans match-string)
-                                (do
-                                  (when (= @paran-count 0)
-                                    (swap! ranges conj [(.-start (.-range result))]))
-                                  (swap! paran-count inc))
-                                (when (contains? close-parans match-string)
-                                  (swap! paran-count dec)
-                                  (when (= @paran-count 0)
-                                    (swap! ranges update (dec (count @ranges)) #(conj % (.-end (.-range result)))))))))))
-
+    (.scan editor
+           regex
+           (fn [result]
+             (when-not (inside-string-or-comment? editor (.-start (.-range result)))
+               (let [match-string (str (first (.-match result)))]
+                 (if (contains? open-parans match-string)
+                   (do
+                     (when (= @paran-count 0)
+                       (swap! ranges conj [(.-start (.-range result))]))
+                     (swap! paran-count inc))
+                   (when (contains? close-parans match-string)
+                     (swap! paran-count dec)
+                     (when (= @paran-count 0)
+                       (swap! ranges update (dec (count @ranges)) #(conj % (.-end (.-range result)))))))))))
     (swap! ranges (partial filter #(= 2 (count %))))
     (swap! ranges (partial map #(apply (.-Range ashell) %)))
     @ranges))
@@ -100,7 +123,8 @@
     (when-let [range (find-range-with-cursor ranges cursor)]
       (let [namespace (find-namespace-for-range editor range)
             code (string/trim (.getTextInBufferRange editor range))]
-        (execute project-name code (when namespace {:ns namespace}))))))
+        (flash-range editor range)
+        (execute-on-host-or-guest project-name code namespace)))))
 
 (defn execute-entered-text
   "Gets the text in the input editor and sends it over to repl."
@@ -116,5 +140,5 @@
 (defn prepare-to-execute
   "The execute-comment is entered, only by the guest side, to signal the host
   side to execute the code."
-  [editor]
-  (append-to-editor editor execute-comment :add-newline? false))
+  [guest-input-editor]
+  (append-to-editor guest-input-editor execute-comment :add-newline? false))

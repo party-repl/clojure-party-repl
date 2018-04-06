@@ -11,7 +11,6 @@
                                                     state]]))
 
 ;; TODO: Switch to unrepl
-;; TODO: Support having multiple REPLs
 ;; TODO: Support sending multiple messages to repl
 ;; TODO: Support exiting repl by Control+D or (exit) or (quit) just like the
 ;;       Leiningen doc says.
