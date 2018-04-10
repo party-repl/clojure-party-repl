@@ -6,7 +6,8 @@
                                                     append-to-editor
                                                     console-log
                                                     show-error
-                                                    repls]]
+                                                    repls
+                                                    visible-repl?]]
             [cljs.core.async :as async :refer [timeout <!]])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
@@ -53,9 +54,12 @@
               namespace))
           namespaces)))
 
+;; TODO: When both host and guest input editors are visible, ask the user with
+;;       a pop up which one to use.
 (defn execute-on-host-or-guest
+  "Execute code on the editor that exists and is visible."
   [project-name code namespace]
-  (condp #(some? (get-in @repls [%2 %1])) project-name
+  (condp #(and (some? (get-in @repls [%2 %1])) (visible-repl? (get-in @repls [%2 %1]))) project-name
     :host-input-editor (execute project-name code (when namespace {:ns namespace}))
     :guest-input-editor (append-to-editor (get-in @repls [project-name :guest-input-editor])
                                           (str code execute-comment)

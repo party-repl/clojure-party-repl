@@ -116,9 +116,12 @@
                               (swap! repls update project-name #(assoc % :connection nil))))
     (.once connection "connect" (fn []
                                   (console-log "!!!Connected to nrepl!!!")
+                                  (when (nil? (get @state :most-recent-repl-project-name))
+                                    (swap! @state assoc :most-recent-repl-project-name project-name))
                                   (.on connection "finish" (fn []
                                                              (console-log "Connection finished...")
-                                                             (swap! repls update project-name #(assoc % :connection nil))))
+                                                             (when (get @repls project-name)
+                                                              (swap! repls update project-name #(assoc % :connection nil)))))
                                   (.clone connection (fn [err message]
                                                        (console-log "Getting session from connection..." (js->clj message))
                                                        (swap! repls update project-name #(assoc % :session (get-in (js->clj message) [0 "new-session"])))

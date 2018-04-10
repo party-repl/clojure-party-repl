@@ -4,7 +4,8 @@
             [cljs.nodejs :as node]
             [cljs.core.async :refer [chan <! >!] :as async]
             [clojure-repl.common :as common :refer [state repls console-log
-                                                    show-error]]
+                                                    show-error
+                                                    visible-repl?]]
             [clojure-repl.host :as host]
             [clojure-repl.guest :as guest]
             [clojure-repl.local-repl :as local-repl]
@@ -59,19 +60,25 @@
               (get-in @repls [project-name :guest-input-editor]))
       project-name)))
 
-(defn get-project-name-from-repls
-  "Returns a project name for either the most recently used repl or any one in
-  the repls that exist."
-  []
-  (or (get-project-name-from-most-recent-repl)
-      (some #(when (or (get-in @repls [% :host-input-editor])
-                       (get-in @repls [% :guest-input-editor]))
-               %)
-            (keys @repls))))
+(defn get-project-name-with-visible-repl []
+  (some #(when (or (visible-repl? (get @repls % :host-input-editor))
+                   (visible-repl? (get @repls % :guest-input-editor)))
+            %)
+        (vals @repls)))
 
 (defn send-to-repl
   "Exported plugin command. Grabs text from the appropriate editor, depending on
-  the context and sends it to the repl."
+  the context and sends it to the repl. The decision making is as follows:
+    1. Get the project name if the active editor is one of the input editors,
+       and then
+      a) Prepare to execute if the editor is a guest input editor for the
+         project name
+      b) Execute entered text if the editor is a host input editor for the
+         project name
+    2. Get the project name either from the active text editor's title,
+       the most recently used repl or the visible repl, and then
+      a) Execute top level form if there's no selection on the editor
+      b) Execute selected text if there's selection"
   []
   (let [editor (.getActiveTextEditor (.-workspace js/atom))]
     (if-let [project-name (get-project-name-from-input-editor editor)]
@@ -80,7 +87,8 @@
         (= editor (get-in @repls [project-name :host-input-editor])) (execution/execute-entered-text project-name editor)
         :else (show-error "There's no running repl for the project: " project-name))
       (if-let [project-name (or (common/get-project-name-from-editor editor)
-                                (get-project-name-from-repls))]
+                                (get-project-name-from-most-recent-repl)
+                                (get-project-name-with-visible-repl))]
         (if (get @repls project-name)
           (cond
             (.isEmpty (.getLastSelection editor)) (execution/execute-top-level-form project-name editor)

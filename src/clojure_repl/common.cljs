@@ -106,6 +106,10 @@
   (swap! repls assoc project-name (-> (apply assoc repl-state options)
                                       (assoc :subscriptions (CompositeDisposable.)))))
 
+(defn visible-repl? [text-editor]
+  (when text-editor
+    (not= "none" (.-display (.-style (.-element text-editor))))))
+
 ;; TODO: Support destroying multiple editors with a shared buffer.
 (defn close-editor
   "Searches through all the panes for the editor and destroys it."
@@ -126,7 +130,9 @@
   [project-name]
   (when-not (or (get-in @repls [project-name :host-input-editor])
                 (get-in @repls [project-name :guest-input-editor]))
-    (swap! repls dissoc project-name)))
+    (swap! repls dissoc project-name)
+    (when (= project-name (get @state :most-recent-repl-project-name))
+      (swap! state :most-recent-repl-project-name nil))))
 
 ;; TODO: Pretty print results
 (defn append-to-editor
