@@ -98,9 +98,31 @@
 (defn get-project-name-from-path [project-path]
   (last (string/split project-path #"/")))
 
-(defn get-project-name-from-editor [editor]
+(defn get-project-name-from-text-editor [editor]
   (when-let [project-path (get-project-path editor)]
     (get-project-name-from-path project-path)))
+
+(defn get-project-name-from-input-editor [editor]
+  (some (fn [project-name]
+          (console-log "Checking if repl exists for the project: " project-name)
+          (when (or (= editor (get-in @repls [project-name :guest-input-editor]))
+                    (= editor (get-in @repls [project-name :host-input-editor])))
+            project-name))
+        (keys @repls)))
+
+(defn get-project-name-from-most-recent-repl
+  "Returns a project name for the most recently used repl if it still exists."
+  []
+  (when-let [project-name (get @state :most-recent-repl-project-name)]
+    (when (or (get-in @repls [project-name :host-input-editor])
+              (get-in @repls [project-name :guest-input-editor]))
+      project-name)))
+
+(defn get-project-name-with-visible-repl []
+  (some #(when (or (visible-repl? (get @repls % :host-input-editor))
+                   (visible-repl? (get @repls % :guest-input-editor)))
+            %)
+        (vals @repls)))
 
 (defn add-repl [project-name & options]
   (swap! repls assoc project-name (-> (apply assoc repl-state options)

@@ -44,57 +44,10 @@
       (host/create-editors :remote-repl)
       (remote-repl/connect-to-remote-repl :remote-repl))))
 
-(defn get-project-name-from-input-editor [editor]
-  (some (fn [project-name]
-          (console-log "Checking if repl exists for the project: " project-name)
-          (when (or (= editor (get-in @repls [project-name :guest-input-editor]))
-                    (= editor (get-in @repls [project-name :host-input-editor])))
-            project-name))
-        (keys @repls)))
-
-(defn get-project-name-from-most-recent-repl
-  "Returns a project name for the most recently used repl if it still exists."
-  []
-  (when-let [project-name (get @state :most-recent-repl-project-name)]
-    (when (or (get-in @repls [project-name :host-input-editor])
-              (get-in @repls [project-name :guest-input-editor]))
-      project-name)))
-
-(defn get-project-name-with-visible-repl []
-  (some #(when (or (visible-repl? (get @repls % :host-input-editor))
-                   (visible-repl? (get @repls % :guest-input-editor)))
-            %)
-        (vals @repls)))
-
-(defn send-to-repl
+(def send-to-repl
   "Exported plugin command. Grabs text from the appropriate editor, depending on
-  the context and sends it to the repl. The decision making is as follows:
-    1. Get the project name if the active editor is one of the input editors,
-       and then
-      a) Prepare to execute if the editor is a guest input editor for the
-         project name
-      b) Execute entered text if the editor is a host input editor for the
-         project name
-    2. Get the project name either from the active text editor's title,
-       the most recently used repl or the visible repl, and then
-      a) Execute top level form if there's no selection on the editor
-      b) Execute selected text if there's selection"
-  []
-  (let [editor (.getActiveTextEditor (.-workspace js/atom))]
-    (if-let [project-name (get-project-name-from-input-editor editor)]
-      (cond
-        (= editor (get-in @repls [project-name :guest-input-editor])) (execution/prepare-to-execute editor)
-        (= editor (get-in @repls [project-name :host-input-editor])) (execution/execute-entered-text project-name editor)
-        :else (show-error "There's no running repl for the project: " project-name))
-      (if-let [project-name (or (common/get-project-name-from-editor editor)
-                                (get-project-name-from-most-recent-repl)
-                                (get-project-name-with-visible-repl))]
-        (if (get @repls project-name)
-          (cond
-            (.isEmpty (.getLastSelection editor)) (execution/execute-top-level-form project-name editor)
-            :else (execution/execute-selected-text project-name editor))
-          (show-error "There's no running repl for the project: " project-name))
-        (console-log "No matching project-name for the editor")))))
+  the context and sends it to the repl."
+  execution/send-to-repl)
 
 (defn show-current-history [project-name editor]
   (.setText editor

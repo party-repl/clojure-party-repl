@@ -148,3 +148,33 @@
   side to execute the code."
   [guest-input-editor]
   (append-to-editor guest-input-editor execute-comment :add-newline? false))
+
+(defn send-to-repl
+  "Grabs text from the appropriate editor, depending on the context and sends
+  it to the repl. The decision making is as follows:
+    1. Get the project name if the active editor is one of the input editors,
+       and then
+      a) Prepare to execute if the editor is a guest input editor for the
+         project name
+      b) Execute entered text if the editor is a host input editor for the
+         project name
+    2. Get the project name either from the active text editor's title,
+       the most recently used repl or the visible repl, and then
+      a) Execute top level form if there's no selection on the editor
+      b) Execute selected text if there's selection"
+  []
+  (let [editor (.getActiveTextEditor (.-workspace js/atom))]
+    (if-let [project-name (common/get-project-name-from-input-editor editor)]
+      (cond
+        (= editor (get-in @repls [project-name :guest-input-editor])) (prepare-to-execute editor)
+        (= editor (get-in @repls [project-name :host-input-editor])) (execute-entered-text project-name editor)
+        :else (show-error "There's no running repl for the project: " project-name))
+      (if-let [project-name (or (common/get-project-name-from-text-editor editor)
+                                (common/get-project-name-from-most-recent-repl)
+                                (common/get-project-name-with-visible-repl))]
+        (if (get @repls project-name)
+          (cond
+            (.isEmpty (.getLastSelection editor)) (execute-top-level-form project-name editor)
+            :else (execute-selected-text project-name editor))
+          (show-error "There's no running repl for the project: " project-name))
+        (console-log "No matching project-name for the editor")))))
