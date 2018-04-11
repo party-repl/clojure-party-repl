@@ -4,7 +4,9 @@
             [clojure-repl.repl :as repl]
             [clojure-repl.common :as common :refer [execute-comment
                                                     append-to-editor
-                                                    console-log]]))
+                                                    console-log]]
+            [cljs.core.async :as async :refer [timeout <!]])
+  (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (def ashell (node/require "atom"))
 
@@ -49,11 +51,23 @@
               namespace))
           namespaces)))
 
+(defn flash-range
+  "Temporary highlight the range to provide visual feedback for users, so
+  they can see what code has been executed in the file."
+  [editor range]
+  (let [marker (.markBufferRange editor range)]
+    (.decorateMarker editor marker (clj->js {"type" "highlight"
+                                             "class" "executed-top-level-form"}))
+    (go
+      (<! (timeout 200))
+      (.destroy marker))))
+
 (defn execute-selected-text
   "Gets the selected text in the editor and sends it over to repl."
   [editor]
   (let [selected-range (.getSelectedBufferRange editor)
         namespace (find-namespace-for-range editor selected-range)]
+    (flash-range editor selected-range)
     (execute (.getSelectedText editor) (when namespace {:ns namespace}))))
 
 (defn find-range-with-cursor
@@ -98,6 +112,7 @@
     (when-let [range (find-range-with-cursor ranges cursor)]
       (let [namespace (find-namespace-for-range editor range)
             code (string/trim (.getTextInBufferRange editor range))]
+        (flash-range editor range)
         (execute code (when namespace {:ns namespace}))))))
 
 (defn execute-entered-text
