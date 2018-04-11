@@ -4,7 +4,8 @@
             [clojure-repl.repl :as repl]
             [clojure-repl.common :as common :refer [execute-comment
                                                     append-to-editor
-                                                    console-log]]
+                                                    console-log
+                                                    state]]
             [cljs.core.async :as async :refer [timeout <!]])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
@@ -51,6 +52,14 @@
               namespace))
           namespaces)))
 
+(defn execute-on-host-or-guest
+  [code namespace]
+  (condp #(some? (get %2 %1)) @state
+    :host-input-editor (execute code (when namespace {:ns namespace}))
+    :guest-input-editor (append-to-editor (get @state :guest-input-editor)
+                                          (str code execute-comment)
+                                          :add-newline? false)))
+
 (defn flash-range
   "Temporary highlight the range to provide visual feedback for users, so
   they can see what code has been executed in the file."
@@ -66,9 +75,10 @@
   "Gets the selected text in the editor and sends it over to repl."
   [editor]
   (let [selected-range (.getSelectedBufferRange editor)
-        namespace (find-namespace-for-range editor selected-range)]
+        namespace (find-namespace-for-range editor selected-range)
+        code (.getSelectedText editor)]
     (flash-range editor selected-range)
-    (execute (.getSelectedText editor) (when namespace {:ns namespace}))))
+    (execute-on-host-or-guest code namespace)))
 
 (defn find-range-with-cursor
   "Searches for a range that cursor is located at."
@@ -113,7 +123,7 @@
       (let [namespace (find-namespace-for-range editor range)
             code (string/trim (.getTextInBufferRange editor range))]
         (flash-range editor range)
-        (execute code (when namespace {:ns namespace}))))))
+        (execute-on-host-or-guest code namespace)))))
 
 (defn execute-entered-text
   "Gets the text in the input editor and sends it over to repl."
