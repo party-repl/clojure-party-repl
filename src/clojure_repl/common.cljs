@@ -30,6 +30,10 @@
   [& output]
   (apply (.-log js/console) output))
 
+ (defn show-error [& error]
+   (apply (.-error js/console) error)
+   (.addError (.-notifications js/atom) (apply str error)))
+
 (defn add-subscription
   "This should be wrapped whenever adding any subscriptions in order to dispose
   them later."

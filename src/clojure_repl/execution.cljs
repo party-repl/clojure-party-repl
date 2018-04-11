@@ -58,7 +58,8 @@
     :host-input-editor (execute code (when namespace {:ns namespace}))
     :guest-input-editor (append-to-editor (get @state :guest-input-editor)
                                           (str code execute-comment)
-                                          :add-newline? false)))
+                                          :add-newline? false)
+    (common/show-error "There's no running repl to execute code")))
 
 (defn flash-range
   "Temporary highlight the range to provide visual feedback for users, so
