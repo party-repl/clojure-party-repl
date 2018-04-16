@@ -116,6 +116,10 @@
               (get-in @repls [project-name :guest-input-editor]))
       project-name)))
 
+(defn visible-repl? [text-editor]
+  (when (and text-editor (.-element text-editor))
+    (not= "none" (.-display (.-style (.-element text-editor))))))
+
 (defn get-project-name-from-visible-repl []
   (some #(when (or (visible-repl? (get-in @repls [% :host-input-editor]))
                    (visible-repl? (get-in @repls [% :guest-input-editor])))
@@ -125,10 +129,6 @@
 (defn add-repl [project-name & options]
   (swap! repls assoc project-name (-> (apply assoc repl-state options)
                                       (assoc :subscriptions (CompositeDisposable.)))))
-
-(defn visible-repl? [text-editor]
-  (when (and text-editor (.-element text-editor))
-    (not= "none" (.-display (.-style (.-element text-editor))))))
 
 ;; TODO: Support destroying multiple editors with a shared buffer.
 (defn close-editor
