@@ -40,8 +40,6 @@
 (def state
   (atom {:disposables []
          :lein-path "/usr/local/bin" ;; TODO: Read this from Settings
-         :guest-input-editor nil
-         :guest-output-editor nil
          :most-recent-repl-project-name nil}))
 
 ; TODO: Can we just use println and the like instead?
@@ -118,18 +116,18 @@
               (get-in @repls [project-name :guest-input-editor]))
       project-name)))
 
-(defn get-project-name-with-visible-repl []
-  (some #(when (or (visible-repl? (get @repls % :host-input-editor))
-                   (visible-repl? (get @repls % :guest-input-editor)))
+(defn get-project-name-from-visible-repl []
+  (some #(when (or (visible-repl? (get-in @repls [% :host-input-editor]))
+                   (visible-repl? (get-in @repls [% :guest-input-editor])))
             %)
-        (vals @repls)))
+        (keys @repls)))
 
 (defn add-repl [project-name & options]
   (swap! repls assoc project-name (-> (apply assoc repl-state options)
                                       (assoc :subscriptions (CompositeDisposable.)))))
 
 (defn visible-repl? [text-editor]
-  (when text-editor
+  (when (and text-editor (.-element text-editor))
     (not= "none" (.-display (.-style (.-element text-editor))))))
 
 ;; TODO: Support destroying multiple editors with a shared buffer.
@@ -154,7 +152,7 @@
                 (get-in @repls [project-name :guest-input-editor]))
     (swap! repls dissoc project-name)
     (when (= project-name (get @state :most-recent-repl-project-name))
-      (swap! state :most-recent-repl-project-name nil))))
+      (swap! state assoc :most-recent-repl-project-name nil))))
 
 ;; TODO: Pretty print results
 (defn append-to-editor

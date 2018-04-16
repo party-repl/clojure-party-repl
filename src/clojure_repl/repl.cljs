@@ -117,7 +117,7 @@
     (.once connection "connect" (fn []
                                   (console-log "!!!Connected to nrepl!!!")
                                   (when (nil? (get @state :most-recent-repl-project-name))
-                                    (swap! @state assoc :most-recent-repl-project-name project-name))
+                                    (swap! state assoc :most-recent-repl-project-name project-name))
                                   (.on connection "finish" (fn []
                                                              (console-log "Connection finished...")
                                                              (when (get @repls project-name)

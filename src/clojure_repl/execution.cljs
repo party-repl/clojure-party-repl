@@ -54,17 +54,23 @@
               namespace))
           namespaces)))
 
-;; TODO: When both host and guest input editors are visible, ask the user with
-;;       a pop up which one to use.
+;; TODO: When both host and guest input editors exist and are visible,
+;;       ask the user with a pop up which one to use.
 (defn execute-on-host-or-guest
-  "Execute code on the editor that exists and is visible."
+  "Execute code on the editor that exists and is visible when there're both
+  host and guest REPLs, otherwise, execute code on the editor that exists."
   [project-name code namespace]
-  (condp #(and (some? (get-in @repls [%2 %1])) (visible-repl? (get-in @repls [%2 %1]))) project-name
-    :host-input-editor (execute project-name code (when namespace {:ns namespace}))
-    :guest-input-editor (append-to-editor (get-in @repls [project-name :guest-input-editor])
-                                          (str code execute-comment)
-                                          :add-newline? false)
-    (show-error "No running repl for the project: " project-name)))
+  (let [find-repl (if (and (get-in @repls [project-name :host-input-editor])
+                           (get-in @repls [project-name :guest-input-editor]))
+                    #(and (some? (get-in @repls [%2 %1]))
+                          (visible-repl? (get-in @repls [%2 %1])))
+                    #(some? (get-in @repls [%2 %1])))]
+    (condp find-repl project-name
+      :host-input-editor (execute project-name code (when namespace {:ns namespace}))
+      :guest-input-editor (append-to-editor (get-in @repls [project-name :guest-input-editor])
+                                            (str code execute-comment)
+                                            :add-newline? false)
+      (show-error "No running REPL or the REPL isn't visible for the project: " project-name))))
 
 (defn flash-range
   "Temporary highlight the range to provide visual feedback for users, so
@@ -74,7 +80,7 @@
     (.decorateMarker editor marker (clj->js {"type" "highlight"
                                              "class" "executed-top-level-form"}))
     (go
-      (<! (timeout 300))
+      (<! (timeout 200))
       (.destroy marker))))
 
 (defn execute-selected-text
@@ -171,7 +177,7 @@
         :else (show-error "There's no running repl for the project: " project-name))
       (if-let [project-name (or (common/get-project-name-from-text-editor editor)
                                 (common/get-project-name-from-most-recent-repl)
-                                (common/get-project-name-with-visible-repl))]
+                                (common/get-project-name-from-visible-repl))]
         (if (get @repls project-name)
           (cond
             (.isEmpty (.getLastSelection editor)) (execute-top-level-form project-name editor)
