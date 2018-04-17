@@ -25,35 +25,31 @@
   (if-let [project-path (common/get-project-path)]
     (let [project-name (common/get-project-name-from-path project-path)]
       (if (get-in @repls [project-name :host-input-editor])
-        (show-error "There's already a running REPL for the project " project-name
-                    ". If not, refresh Atom, please.")
+        (show-error "There's already a running REPL for the project " project-name)
         (do
           (common/add-repl project-name)
           (host/create-editors project-name)
           (local-repl/start-local-repl project-path))))
     (show-error "Current file is not located inside one of projects")))
 
-;; TODO: Support having multiple remote REPLs.
 (defn connect-to-nrepl
   "Exported plugin command. Connects to an existing nrepl by host and port."
   [event]
   (console-log "clojure-repl on the case!")
-  (if (get @repls :remote-repl)
-    (show-error "There's already a remote REPL connected. Currently, only one remote REPL is allowed.")
-    (go
-      (when-let [{:keys [host port]} (<! (panel/prompt-connection-panel strings/nrepl-connection-message))]
-        (if (get @repls :remote-repl)
-          (show-error "There's already a REPL connected to " host " " port
-                      ". If not, refresh Atom, please.")
-          (do
-            (common/add-repl :remote-repl
-                             :host host
-                             :port port
-                             :lein-process :remote
-                             :init-code "(.name *ns*)"
-                             :type :nrepl)
-            (host/create-editors :remote-repl)
-            (remote-repl/connect-to-remote-repl :remote-repl)))))))
+  (go
+    (when-let [{:keys [host port project-name]} (<! (panel/prompt-connection-panel strings/nrepl-connection-message))]
+      (if (get-in @repls [project-name :host-input-editor])
+        (show-error "There's already a REPL for a project " project-name " "
+                    "connected to " host ":" port)
+        (do
+          (common/add-repl project-name
+                           :host host
+                           :port port
+                           :lein-process :remote
+                           :init-code "(.name *ns*)"
+                           :type :nrepl)
+          (host/create-editors project-name)
+          (remote-repl/connect-to-remote-repl project-name))))))
 
 (def send-to-repl
   "Exported plugin command. Grabs text from the appropriate editor, depending on
