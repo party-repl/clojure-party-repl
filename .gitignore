@@ -2,7 +2,7 @@
 .DS_Store
 pom.xml
 *.jar
-plugin/lib
+plugin/lib/cljs-runtime
 plugin/node_modules
 /classes/
 /out/
