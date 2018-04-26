@@ -3,6 +3,7 @@
   (:require [clojure.string :as string]
             [cljs.nodejs :as node]
             [cljs.core.async :refer [chan <! >!] :as async]
+            [oops.core :refer [oget]]
             [clojure-repl.common :as common :refer [state repls console-log
                                                     show-error visible-repl?
                                                     get-project-name-from-input-editor]]
@@ -56,7 +57,10 @@
   the context and sends it to the repl."
   execution/send-to-repl)
 
-(defn show-current-history [project-name editor]
+(defn ^:private show-current-history
+  "Replaces the content of the input-editor with one of the executed commands in
+  the history at the current history index."
+  [project-name editor]
   (.setText editor
             (nth (get-in @repls [project-name :repl-history])
                  (get-in @repls [project-name :current-history-index]))))
@@ -98,7 +102,7 @@
   []
   (swap! state update :disposables
          concat
-         [(.add commands "atom-workspace" "clojure-repl:startRepl" start-local-repl) ;; TODO: Rename this command to startLocalRepl
+         [(.add commands "atom-workspace" "clojure-repl:startLocalRepl" start-local-repl)
           (.add commands "atom-workspace" "clojure-repl:connectToNrepl" connect-to-nrepl)
           (.add commands "atom-workspace" "clojure-repl:sendToRepl" send-to-repl)
           (.add commands "atom-text-editor.repl-entry" "clojure-repl:showNewerHistory" show-newer-repl-history)
@@ -109,12 +113,14 @@
   our editors from getting autosaved into the project. The hook for this is
   defined in package.json."
   [info]
-  (let [dont-save-if (get (js->clj info) "dontSaveIf")]
+  (let [dont-save-if (oget info "dontSaveIf")]
     (dont-save-if (fn [pane-item]
                     (some #(string/includes? (.getPath pane-item) %1)
                           [common/output-editor-title common/input-editor-title])))))
 
-(defn dispose-repls []
+(defn ^:private dispose-repls
+  "Disposes all the existing guest and host REPLs."
+  []
   (doseq [project-name (keys @repls)]
     (guest/dispose project-name)
     (host/dispose project-name)))

@@ -13,7 +13,7 @@
       'submenu': [
         {
           'label': 'Start Local REPL'
-          'command': 'clojure-repl:startRepl'
+          'command': 'clojure-repl:startLocalRepl'
         },
         {
           'label': 'Connect to Remote nREPL Server'

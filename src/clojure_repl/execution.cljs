@@ -77,8 +77,8 @@
   they can see what code has been executed in the file."
   [editor range]
   (let [marker (.markBufferRange editor range)]
-    (.decorateMarker editor marker (clj->js {"type" "highlight"
-                                             "class" "executed-top-level-form"}))
+    (.decorateMarker editor marker (js-obj "type" "highlight"
+                                           "class" "executed-top-level-form"))
     (go
       (<! (timeout 200))
       (.destroy marker))))

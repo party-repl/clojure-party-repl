@@ -165,8 +165,8 @@
   []
   (let [{:keys [container] :as components} (create-connection-panel-dom)
         panel (-> (.-workspace js/atom)
-                  (.addModalPanel (clj->js {"item" container
-                                            "visible" false})))
+                  (.addModalPanel (js-obj "item" container
+                                          "visible" false)))
         components (assoc components :panel panel)]
     (add-connection-panel-commands components)
     (add-connection-panel-tab-listeners components)

@@ -1,6 +1,6 @@
 # macOS keybindings:
 '.platform-darwin atom-workspace atom-text-editor:not([mini])':
-  'ctrl-alt-o': 'clojure-repl:startRepl'
+  'ctrl-alt-o': 'clojure-repl:startLocalRepl'
   'cmd-enter': 'clojure-repl:sendToRepl'
 
 '.platform-darwin atom-workspace atom-text-editor:not([mini]).repl-entry':
@@ -10,7 +10,7 @@
 
 # Linux keybindings:
 '.platform-linux atom-workspace atom-text-editor:not([mini])':
-  'ctrl-alt-o': 'clojure-repl:startRepl'
+  'ctrl-alt-o': 'clojure-repl:startLocalRepl'
   'ctrl-enter': 'clojure-repl:sendToRepl'
 
 '.platform-linux atom-workspace atom-text-editor:not([mini]).repl-entry':

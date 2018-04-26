@@ -84,23 +84,30 @@
 ;;       should, however, allow user to open one big folder that contains
 ;;       multiple projects.
 (defn get-project-path
+  "Returns the project path of the given editor or the active editor."
   ([]
-    (get-project-path (.getActiveTextEditor (.-workspace js/atom))))
+   (get-project-path (.getActiveTextEditor (.-workspace js/atom))))
   ([text-editor]
-    (let [path (.getPath (.getBuffer text-editor))
-          [directory-path, relative-path] (.relativizePath (.-project js/atom) path)]
-      (when directory-path
-        (console-log "----Project---->" directory-path " - " relative-path)
-        (get-project-directory-from-path directory-path relative-path)))))
+   (let [path (.getPath (.getBuffer text-editor))
+         [directory-path, relative-path] (.relativizePath (.-project js/atom) path)]
+     (when directory-path
+       (console-log "----Project---->" directory-path " - " relative-path)
+       (get-project-directory-from-path directory-path relative-path)))))
 
-(defn get-project-name-from-path [project-path]
+(defn get-project-name-from-path
+  "Returns the project name from the given path."
+  [project-path]
   (last (string/split project-path #"/")))
 
-(defn get-project-name-from-text-editor [editor]
+(defn get-project-name-from-text-editor
+  "Returns the project name from the path of the text editor."
+  [editor]
   (when-let [project-path (get-project-path editor)]
     (get-project-name-from-path project-path)))
 
-(defn get-project-name-from-input-editor [editor]
+(defn get-project-name-from-input-editor
+  "Returns the project name if there's a reference to the input editor."
+  [editor]
   (some (fn [project-name]
           (console-log "Checking if repl exists for the project: " project-name)
           (when (or (= editor (get-in @repls [project-name :guest-input-editor]))
@@ -131,7 +138,7 @@
                                       (assoc :subscriptions (CompositeDisposable.)))))
 
 ;; TODO: Support destroying multiple editors with a shared buffer.
-(defn close-editor
+(defn ^:private close-editor
   "Searches through all the panes for the editor and destroys it."
   [editor]
   (doseq [pane (.getPanes (.-workspace js/atom))]

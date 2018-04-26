@@ -67,8 +67,8 @@
   (console-log "Starting lein process...")
   (let [project-name (get-project-name-from-path project-path)]
     (stop-process project-name)
-    (let [process-env (clj->js {"cwd" project-path
-                                "env" (goog.object.set env "PWD" project-path)})
+    (let [process-env (js-obj "cwd" project-path
+                              "env" (goog.object.set env "PWD" project-path))
           lein-process (.spawn child-process (first lein-exec) (clj->js (next lein-exec)) process-env)]
       (swap! repls update project-name #(assoc % :current-working-directory project-path
                                                  :process-env process-env

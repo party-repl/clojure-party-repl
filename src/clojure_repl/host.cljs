@@ -33,7 +33,7 @@
   "Opens a text editor for displaying repl outputs."
   [project-name]
   (-> (.-workspace js/atom)
-      (.open (str output-editor-title " " project-name) (clj->js {"split" "right"}))
+      (.open (str output-editor-title " " project-name) (js-obj "split" "right"))
       (.then (fn [editor]
                 (set! (.-isModified editor) (fn [] false))
                 (set! (.-isModified (.getBuffer editor)) (fn [] false))
@@ -62,7 +62,7 @@
   teletype in the entry, so that it can detect when to execute the code."
   [project-name]
   (-> (.-workspace js/atom)
-      (.open (str input-editor-title " " project-name) (clj->js {"split" "down"}))
+      (.open (str input-editor-title " " project-name) (js-obj "split" "down"))
       (.then (fn [editor]
                 (set! (.-isModified editor) (fn [] false))
                 (set! (.-isModified (.getBuffer editor)) (fn [] false))

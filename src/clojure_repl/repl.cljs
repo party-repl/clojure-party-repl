@@ -5,7 +5,9 @@
                                                     state
                                                     append-to-editor
                                                     add-repl-history
-                                                    console-log]]))
+                                                    console-log]]
+            [oops.core :refer [oget ocall]]))
+
 
 ;; TODO: Switch to unrepl
 ;; TODO: Support having multiple REPLs
@@ -85,12 +87,12 @@
   (console-log "Sending code to repl... " code " with " options)
   (let [current-ns (or (:ns options) (get-in @repls [project-name :current-ns]))
         wrapped-code (wrap-to-catch-exception code)
-        eval-options (clj->js {"op" "eval"
-                               "code" wrapped-code
-                               "ns" current-ns
-                               "session" (get-in @repls [project-name :session])})
+        eval-options (js-obj "op" "eval"
+                             "code" wrapped-code
+                             "ns" current-ns
+                             "session" (get-in @repls [project-name :session]))
         connection (get-in @repls [project-name :connection])]
-    (.send connection eval-options (fn [err messages]
+    (.send connection eval-options (fn [errors messages]
                                       (try
                                         (console-log "Sent code through connection... " messages)
                                         (when (namespace-not-found? (last messages))
@@ -106,9 +108,9 @@
   (console-log "Connecting to nrepl...")
   (when (get project-name @repls)
     (close-connection project-name))
-  (let [connection (.connect nrepl (clj->js {"host" (get-in @repls [project-name :host])
-                                             "port" (get-in @repls [project-name :port])
-                                             "verbose" false}))]
+  (let [connection (.connect nrepl (js-obj "host" (get-in @repls [project-name :host])
+                                           "port" (get-in @repls [project-name :port])
+                                           "verbose" true))]
     (swap! repls update project-name #(assoc % :connection connection))
     (.on connection "error" (fn [err]
                               (console-log "clojure-repl: connection error " err)
@@ -123,8 +125,8 @@
                                                              (when (get @repls project-name)
                                                               (swap! repls update project-name #(assoc % :connection nil)))))
                                   (.clone connection (fn [err message]
-                                                       (console-log "Getting session from connection..." (js->clj message))
-                                                       (swap! repls update project-name #(assoc % :session (get-in (js->clj message) [0 "new-session"])))
+                                                       (console-log "Getting session from connection..." message)
+                                                       (swap! repls update project-name #(assoc % :session (oget message ["0" "new-session"])))
                                                        (when-let [init-code (get-in @repls [project-name :init-code])]
                                                          (send-to-repl project-name init-code {}))
                                                        (let [handler (partial handle-messages project-name)]
