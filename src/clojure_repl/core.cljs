@@ -15,9 +15,7 @@
             [clojure-repl.connection-panel :as panel]
             [clojure-repl.strings :as strings]))
 
-(def ashell (node/require "atom"))
 (def commands (.-commands js/atom))
-(def CompositeDisposable (.-CompositeDisposable ashell))
 
 (defn start-local-repl
   "Exported plugin command. Starts new processes to run the repl."

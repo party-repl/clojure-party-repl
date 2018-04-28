@@ -3,9 +3,9 @@
             [cljs.pprint :refer [pprint]]
             [clojure.string :as string]))
 
-(def ashell (node/require "atom"))
+(def node-atom (node/require "atom"))
 (def fs (node/require "fs"))
-(def CompositeDisposable (.-CompositeDisposable ashell))
+(def CompositeDisposable (.-CompositeDisposable node-atom))
 
 (def output-editor-title "Clojure REPL History")
 (def input-editor-title "Clojure REPL Entry")
