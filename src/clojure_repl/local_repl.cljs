@@ -1,6 +1,7 @@
 (ns clojure-repl.local-repl
   (:require [cljs.nodejs :as node]
             [clojure.string :as string]
+            [oops.core :refer [oset!]]
             [clojure-repl.repl :as repl :refer [stop-process
                                                 connect-to-nrepl
                                                 append-to-output-editor]]
@@ -15,8 +16,6 @@
 ;; TODO: Support exiting repl by Control+D or (exit) or (quit) just like the
 ;;       Leiningen doc says.
 
-(def ashell (node/require "atom"))
-(def fs (node/require "fs"))
 (def process (node/require "process"))
 (def child-process (node/require "child_process"))
 
@@ -81,7 +80,7 @@
   (let [env (goog.object.clone (.-env process))]
     (doseq [k ["PWD" "ATOM_HOME" "ATOM_SHELL_INTERNAL_RUN_AS_NODE" "GOOGLE_API_KEY" "NODE_ENV" "NODE_PATH" "userAgent" "taskPath"]]
       (goog.object.remove env k))
-    (goog.object.set env "PATH" (:lein-path @state))
+    (oset! env "PATH" (:lein-path @state))
     env))
 
 (defn start-local-repl [project-path]

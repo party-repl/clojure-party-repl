@@ -11,7 +11,7 @@
             [cljs.core.async :as async :refer [timeout <!]])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
-(def ashell (node/require "atom"))
+(def node-atom (node/require "atom"))
 
 (defn execute [project-name code & [options]]
   (repl/execute-code project-name code options))
@@ -46,7 +46,7 @@
 (defn find-namespace-for-range
   "Finds a namespace where the code range is declared at."
   [editor range]
-  (let [search-range ((.-Range ashell) 0 (.-start range))
+  (let [search-range ((.-Range node-atom) 0 (.-start range))
         namespaces (find-all-namespace-declarations editor search-range)]
     (some (fn [[point namespace]]
             (console-log "Namespace " namespace " " (.isGreaterThan (.-start range) point))
@@ -123,7 +123,7 @@
                      (when (= @paran-count 0)
                        (swap! ranges update (dec (count @ranges)) #(conj % (.-end (.-range result)))))))))))
     (swap! ranges (partial filter #(= 2 (count %))))
-    (swap! ranges (partial map #(apply (.-Range ashell) %)))
+    (swap! ranges (partial map #(apply (.-Range node-atom) %)))
     @ranges))
 
 (defn execute-top-level-form

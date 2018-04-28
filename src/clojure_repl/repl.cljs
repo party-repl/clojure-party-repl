@@ -13,7 +13,7 @@
 ;; TODO: Support having multiple REPLs
 ;; TODO: Support sending multiple messages to repl
 
-(def ashell (node/require "atom"))
+(def node-atom (node/require "atom"))
 (def process (node/require "process"))
 (def nrepl (node/require "nrepl-client"))
 (def net (node/require "net"))
