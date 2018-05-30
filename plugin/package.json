@@ -5,13 +5,14 @@
   "description": "Clojure REPL for Atom with Teletype support",
   "keywords": [
   ],
-  "repository": "https://github.com/hitsusorisaku/clojure-repl",
+  "repository": "",
   "license": "Eclipse Public License",
   "engines": {
     "atom": ">=1.0.0 <2.0.0"
   },
   "dependencies": {
-    "nrepl-client": ">=0.2.3"
+    "nrepl-client": ">=0.2.3",
+    "bencode": "~2.0.0"
   },
   "consumedServices": {
     "autosave": {

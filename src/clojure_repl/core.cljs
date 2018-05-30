@@ -11,6 +11,7 @@
             [clojure-repl.guest :as guest]
             [clojure-repl.local-repl :as local-repl]
             [clojure-repl.remote-repl :as remote-repl]
+            [clojure-repl.nrepl :as nrepl]
             [clojure-repl.execution :as execution]
             [clojure-repl.connection-panel :as panel]
             [clojure-repl.strings :as strings]))

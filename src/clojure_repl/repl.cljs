@@ -1,12 +1,13 @@
 (ns clojure-repl.repl
   (:require [cljs.nodejs :as node]
             [clojure.string :as string]
+            [oops.core :refer [oget ocall]]
             [clojure-repl.common :as common :refer [repls
                                                     state
                                                     append-to-editor
                                                     add-repl-history
                                                     console-log]]
-            [oops.core :refer [oget ocall]]))
+            [clojure-repl.nrepl :refer [connect send]]))
 
 
 ;; TODO: Switch to unrepl
