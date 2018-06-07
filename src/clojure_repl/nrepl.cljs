@@ -89,7 +89,7 @@
   error happens, it means there isn't enough information to fully decode the
   data. So we need to cache all the current data we got and wait for the
   remaining data to become available to be consumed."
-  [connection data]
+  [connection]
   (when-let [decoded-data (decode connection data)]
     (loop []
      (console-log "Checking more... " (decoded-all?))
@@ -97,20 +97,35 @@
        decoded-data
        (recur)))))
 
+(defn ^:private consume-messages-with-id [socket-connection id]
+  (let [channel (chan [])]
+    (loop [chunk (.read socket-connection)]
+      (when (some? chunk)
+        (conj channel (.decode bencode chunk "utf8"))
+        (recur (.read socket-connection))))
+    channel))
+
 (defn ^:private received-all-messages? [connection id]
   (let [messages (oget!+ (.-queued-messages connection) id)]
     (has-done-message? messages)))
 
-(defn ^:private read-data [connection data]
-  (console-log "Reading data... " data)
-  (consume-all-data connection data))
+(defn ^:private read-data [connection]
+  (console-log "Reading data... ")
+  (consume-all-data connection))
 
-(defn clone [connection callback])
+(defn clone
+  ([connection callback] (send connection {:op "clone"} callback))
+  ([connection session callback] (send connection {:op "clone" :session session} callback)))
 
+;;
 
-(defn connect [options]
-  (let [socket-connection (.connect net (clj->js options))
+(defn connect [{:keys [host port project-name]}]
+  (let [socket-connection (net.Socket.)
         connection (Connection. socket-connection (atom {}) (atom {}) (atom {}) (atom {}))
         on-readable (partial read-data connection)]
-    (.on socket-connection "readable" on-readable)
+    (.connect socket-connection
+              host
+              port
+              (fn []
+                (.on socket-connection "readable" on-readable)))
     connection))
