@@ -54,10 +54,10 @@
       (console-log "Result arrived with ns: " (.-ns message))
       (when (.-ns message)
         (swap! repls update project-name #(assoc % :current-ns (.-ns message))))
-      (when (.-out message)
+      (if (.-out message)
         (append-to-output-editor project-name (string/trim (.-out message))))
-      (when (.-value message)
-        (append-to-output-editor project-name (.-value message))))))
+        (when (.-value message)
+          (append-to-output-editor project-name (.-value message))))))
 
 (defn handle-messages
   "Looks through messages received from repl. If any of the messages got

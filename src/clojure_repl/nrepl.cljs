@@ -67,10 +67,10 @@
           (stdin [])))
 
 (defrecord Connection [socket-connection
-                       from-channels
-                       out-channels
-                       queued-messages
-                       callbacks])
+                       from-channel
+                       out-channel
+                       queued-message
+                       callback])
 
 (defn ^:private has-done-message? [messages]
   (and (last messages)
@@ -117,15 +117,69 @@
   ([connection callback] (send connection {:op "clone"} callback))
   ([connection session callback] (send connection {:op "clone" :session session} callback)))
 
-;;
+;; TODO: Support having multiple connections to REPL using bencode.
+;; TODO: Support type ahead by creating a new session to send the code.
 
-(defn connect [{:keys [host port project-name]}]
+;; Messages can be one of these types:
+;;  1. General REPL's messages, especially for printing the initial description of the REPL -> session-id
+;;  2. Replies that come back from the message sent to the REPL -> message-id
+
+(defn connect [{:keys [host port project-name]} callback]
   (let [socket-connection (net.Socket.)
-        connection (Connection. socket-connection (atom {}) (atom {}) (atom {}) (atom {}))
+        connection (Connection. socket-connection (chan) (chan) (atom []))
         on-readable (partial read-data connection)]
     (.connect socket-connection
               host
               port
               (fn []
+                (.clone socket-connection (fn [err message]
+                                            (callback err message)))
                 (.on socket-connection "readable" on-readable)))
     connection))
+
+;; ---------------------------------------------------
+;; Connection should be enstablished like this:
+(defn send-to-nrepl [project-name code & [options]]
+  (let [current-ns (or (:ns options) (get-in @repls [project-name :current-ns]))
+        wrapped-code (wrap-to-catch-exception code)
+        session (get-in @repls [project-name :session])
+        connection (get-in @repls [project-name :connection])]
+    (eval connection wrapped-code current-ns session (fn [errors messages]
+                                                       (when (namespace-not-found? (last messages))
+                                                         (console-log "Resending code to the current namespace...")
+                                                         (send-to-repl project-name code))))))
+
+(defn output-namespace [project-name]
+  (append-to-output-editor project-name (str (get-in @repls [project-name :current-ns]) "=> ") :add-newline? false))
+
+(defn output-messages [messages])
+
+(defn handle-messages [project-name connection]
+  (go-loop []
+    (let [messages (<! (.-output-channel connection))]
+      (when (not-any? namespace-not-found? messages)
+        (output-messages messages)
+        (if-not (has-done-messages? messages)
+          (recur)
+          (output-namespace project-name))))))
+
+(defn update-most-recent-repl [project-name]
+  (when (nil? (get @state :most-recent-repl-project-name))
+    (swap! state assoc :most-recent-repl-project-name project-name)))
+
+(defn connect-to-nrepl [project-name host port]
+  (when (get project-name @repls)
+    (close-connection project-name))
+  (let [connection (connect {:project-name project-name
+                             :host host
+                             :port port}
+                             (fn [err message]
+                               (when-not err
+                                 (swap! repl-state update
+                                        project-name
+                                        #(assoc %
+                                           :repl-type :repl-type/nrepl
+                                           :connection socket-connection
+                                           :session (oget message ["0" "new-session"])))
+                                 (update-most-recent-repl project-name))))]
+    ))
