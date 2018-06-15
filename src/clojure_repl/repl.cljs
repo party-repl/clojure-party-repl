@@ -6,15 +6,13 @@
                                                     state
                                                     append-to-editor
                                                     add-repl-history
-                                                    console-log]]
-            [clojure-repl.nrepl :refer [connect send]]))
+                                                    console-log]]))
 
 
 ;; TODO: Switch to unrepl
 ;; TODO: Support having multiple REPLs
 ;; TODO: Support sending multiple messages to repl
 
-(def node-atom (node/require "atom"))
 (def process (node/require "process"))
 (def nrepl (node/require "nrepl-client"))
 (def net (node/require "net"))
@@ -55,9 +53,9 @@
       (when (.-ns message)
         (swap! repls update project-name #(assoc % :current-ns (.-ns message))))
       (if (.-out message)
-        (append-to-output-editor project-name (string/trim (.-out message))))
+        (append-to-output-editor project-name (string/trim (.-out message)))
         (when (.-value message)
-          (append-to-output-editor project-name (.-value message))))))
+          (append-to-output-editor project-name (.-value message)))))))
 
 (defn handle-messages
   "Looks through messages received from repl. If any of the messages got
@@ -107,7 +105,7 @@
   "Connects to nrepl using already discovered host and port information."
   [project-name]
   (console-log "Connecting to nrepl...")
-  (when (get project-name @repls)
+  (when (get @repls project-name)
     (close-connection project-name))
   (let [connection (.connect nrepl (js-obj "host" (get-in @repls [project-name :host])
                                            "port" (get-in @repls [project-name :port])

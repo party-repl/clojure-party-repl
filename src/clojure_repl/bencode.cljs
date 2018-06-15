@@ -1,16 +1,14 @@
-(ns clojure-repl.nrepl
+(ns clojure-repl.bencode
   (:require [cljs.nodejs :as node]
-            [oops.core :refer [oget+ oset! oset!+ ocall]]
-            [clojure-repl.common :refer [console-log]]
-            [cljs.core.async :as async :refer [chan closed? <!]])
-  (:require-macros [cljs.core.async.macros :refer [go]]))
+            [oops.core :refer [oset!]]
+            [clojure-repl.common :refer [console-log]]))
 
 (def bencode (node/require "bencode"))
 
 (defn reset-decode-data []
-  (oset! (.-data (.-decode bencode)) nil)
-  (oset! (.-encoding (.-decode bencode)) nil)
-  (oset! (.-position (.-decode bencode)) 0))
+  (set! (.-data (.-decode bencode)) nil)
+  (set! (.-encoding (.-decode bencode)) nil)
+  (set! (.-position (.-decode bencode)) 0))
 
 (defn ^:private decode-next
   "Returns a decoded data when it succeeds to decode. Returns nil when there's
@@ -18,7 +16,7 @@
   []
   (try
     (.next decode)
-    (catch Error e)))
+    (catch js/Error e)))
 
 (defn ^:private decode-all
   "Returns a vector of decoded data that was possible to decode as far as
@@ -33,8 +31,8 @@
   "Returns a vector of decoded-data after concatinating the new data onto the
   previous data."
   [data]
-  (let [new-data (.concat Buffer (Array. (.-data (.-decode bencode)) (Buffer. data)))]
-    (oset! (.-data (.-decode bencode)) new-data)
+  (let [new-data (.concat js/Buffer (js/Array. (.-data (.-decode bencode)) (js/Buffer. data)))]
+    (set! (.-data (.-decode bencode)) new-data)
     (decode-all [])))
 
 (defn ^:private decoded-all? []
@@ -59,6 +57,11 @@
   (if (decoded-all?)
     (try
       (let [decoded-data (.decode bencode data "utf8")]
-        (decode-all [decoded-data])))
-      (catch Error e))
+        (decode-all [decoded-data]))
+      (catch js/Error e))
     (concat-data-and-decode data)))
+
+(defn encode [data]
+  (try
+    (.encode bencode data "binary")
+    (catch js/Error e)))

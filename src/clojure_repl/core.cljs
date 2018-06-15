@@ -2,7 +2,7 @@
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [clojure.string :as string]
             [cljs.nodejs :as node]
-            [cljs.core.async :refer [chan <! >!] :as async]
+            [cljs.core.async :refer [chan <!] :as async]
             [oops.core :refer [oget]]
             [clojure-repl.common :as common :refer [state repls console-log
                                                     show-error visible-repl?
