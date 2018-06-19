@@ -71,7 +71,8 @@
           lein-process (.spawn child-process (first lein-exec) (clj->js (next lein-exec)) process-env)]
       (swap! repls update project-name #(assoc % :current-working-directory project-path
                                                  :process-env process-env
-                                                 :lein-process lein-process))
+                                                 :lein-process lein-process
+                                                 :repl-type :repl-type/nrepl))
       (setup-process project-name lein-process))))
 
 (defn get-env
