@@ -3,8 +3,8 @@
             [clojure.string :as string]
             [oops.core :refer [oset!]]
             [clojure-repl.repl :as repl :refer [stop-process
-                                                connect-to-nrepl
                                                 append-to-output-editor]]
+            [clojure-repl.nrepl :as nrepl]
             [clojure-repl.common :as common :refer [console-log
                                                     get-project-path
                                                     get-project-name-from-path
@@ -24,11 +24,11 @@
 (defn look-for-port
   "Searches for a port that nRepl server started on."
   [project-name data-string]
-  (if (nil? (get-in @repls [project-name :port]))
-    (when-let [match (re-find #"nREPL server started on port (\d+)" data-string)]
-      (console-log "Port found!!! " match " from " data-string)
-      (swap! repls update project-name #(assoc % :port (second match)))
-      (connect-to-nrepl project-name))))
+  (when (nil? (get-in @repls [project-name :port]))
+    (when-let [[_ port] (re-find #"nREPL server started on port (\d+)" data-string)]
+      (console-log "Port found from " data-string)
+      (swap! repls update project-name #(assoc % :port port))
+      (nrepl/connect-to-nrepl project-name (get-in @repls [project-name :host]) port))))
 
 (defn look-for-ns
   "Searches for a namespace that's currently set in the repl."

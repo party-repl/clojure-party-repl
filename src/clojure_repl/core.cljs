@@ -49,7 +49,7 @@
                            :init-code "(.name *ns*)"
                            :type :nrepl)
           (host/create-editors project-name)
-          (remote-repl/connect-to-remote-repl project-name))))))
+          (remote-repl/connect-to-remote-repl project-name host port))))))
 
 (def send-to-repl
   "Exported plugin command. Grabs text from the appropriate editor, depending on

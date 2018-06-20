@@ -2,13 +2,14 @@
   (:require [cljs.nodejs :as node]
             [clojure.string :as string]
             [oops.core :refer [oget oset! oset!+ ocall]]
-            [clojure-repl.common :refer [console-log repls state]]
+            [clojure-repl.common :refer [console-log repls state add-repl-history]]
             [clojure-repl.bencode :as bencode :refer [encode decode]]
             [clojure-repl.repl :as repl]
             [cljs.core.async :as async :refer [chan timeout close! <! >! alts!]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 (def net (node/require "net"))
+(def process (node/require "process"))
 
 (defn timeout-chan [& [msecs]]
   (timeout (or msecs (.-MAX_SAFE_INTEGER js/Number))))
@@ -75,14 +76,14 @@
   decoded and put into a channel. The channel is closed when no more data
   can be read from the socket."
   [socket-connection message-chan]
-  (go-loop [chunk (.read socket-connection)]
-    (console-log "Consuming data..." )
-    (if (some? chunk)
+  (go-loop []
+    (console-log "Consuming data...")
+    (if-let [chunk (.read socket-connection)]
       (let [messages (decode chunk)]
         (when-not (empty? messages)
           (console-log "Decoded data...")
           (>! message-chan messages)
-          (recur (.read socket-connection))))
+          (recur)))
       (close! message-chan))))
 
 (defn ^:private read-data
@@ -155,13 +156,6 @@
 ;; ---------------------------------------------------
 ;; Connection should be enstablished as below:
 ;; ---------------------------------------------------
-(defn append-to-output-editor
-  "Appends text at the end of the output editor."
-  [project-name output & {:keys [add-newline?] :or {add-newline? true}}]
-  (when-let [output-editor (get-in @repls [project-name :host-output-editor])]
-    (common/append-to-editor output-editor text :add-newline? add-newline?)
-    (console-log "OUTPUT: " project-name output)))
-
 (defn ^:private namespace-not-found? [message]
   (when (.-status message)
     (some #(= "namespace-not-found" %) (.-status message))))
@@ -178,10 +172,10 @@
                  (repl/pst throwable)
                  (throw (Exception. (str *err*)))))))"))
 
+(comment "Sends code over to repl with current namespace, or optional namespace if
+specified. When a namespace-not-found message is received, resend the code
+to the current namespace.")
 (defmethod repl/execute-code :repl-type/nrepl
-  "Sends code over to repl with current namespace, or optional namespace if
-  specified. When a namespace-not-found message is received, resend the code
-  to the current namespace."
   [project-name code & [namespace]]
   (let [wrapped-code (wrap-to-catch-exception code)
         {:keys [connection session current-ns]} (get @repls project-name)
@@ -189,27 +183,27 @@
                  "ns" (or namespace current-ns)}]
     (swap! state assoc :most-recent-repl-project-name project-name)
     (repl/append-to-output-editor project-name code)
-    (common/add-repl-history project-name code)
+    (add-repl-history project-name code)
     (eval connection
           wrapped-code
           options
           (fn [errors messages] ;; TODO: Do we need try-catch to resend code?
             (when (namespace-not-found? (last messages))
               (console-log "Resending code to the current namespace...")
-              (send-to-nrepl project-name code))))))
+              (repl/execute-code project-name code))))))
 
 (defn output-namespace [project-name]
-  (append-to-output-editor project-name (str (get-in @repls [project-name :current-ns]) "=> ") :add-newline? false))
+  (repl/append-to-output-editor project-name (str (get-in @repls [project-name :current-ns]) "=> ") :add-newline? false))
 
 (defn output-message [project-name message-js]
   (when (.-ns message-js)
     (swap! repls update project-name #(assoc % :current-ns (.-ns message-js))))
   (if (.-out message-js)
-    (append-to-output-editor project-name (string/trim (.-out message-js)))
+    (repl/append-to-output-editor project-name (string/trim (.-out message-js)))
     (if (.-value message-js)
-      (append-to-output-editor project-name (.-value message-js))
-      (when (.-err message)
-        (append-to-output-editor project-name (.-err message-js))))))
+      (repl/append-to-output-editor project-name (.-value message-js))
+      (when (.-err message-js)
+        (repl/append-to-output-editor project-name (.-err message-js))))))
 
 (defn filter-by-session [session messages]
   (filter #(= (.-session %) session) messages))
@@ -235,9 +229,9 @@
   (when (nil? (get @state :most-recent-repl-project-name))
     (swap! state assoc :most-recent-repl-project-name project-name)))
 
+(comment "Closes the nrepl connection and kills the lein process. This will also kill
+all the child processes created by the lein process.")
 (defmethod repl/stop-process :repl-type/nrepl
-  "Closes the nrepl connection and kills the lein process. This will also kill
-  all the child processes created by the lein process."
   [project-name]
   (let [{:keys [connection lein-process]} (get @repls project-name)]
     (when connection

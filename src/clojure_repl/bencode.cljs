@@ -15,7 +15,7 @@
   no more data to be decoded or when there's only partial data."
   []
   (try
-    (.next decode)
+    (.next (.-decode bencode))
     (catch js/Error e)))
 
 (defn ^:private decode-all
@@ -31,6 +31,7 @@
   "Returns a vector of decoded-data after concatinating the new data onto the
   previous data."
   [data]
+  (console-log "Concat and decode...")
   (let [new-data (.concat js/Buffer (js/Array. (.-data (.-decode bencode)) (js/Buffer. data)))]
     (set! (.-data (.-decode bencode)) new-data)
     (decode-all [])))
@@ -56,6 +57,7 @@
   [data]
   (if (decoded-all?)
     (try
+      (console-log "Decoding...")
       (let [decoded-data (.decode bencode data "utf8")]
         (decode-all [decoded-data]))
       (catch js/Error e))
