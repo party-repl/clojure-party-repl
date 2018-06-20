@@ -66,7 +66,7 @@
                           (visible-repl? (get-in @repls [%2 %1])))
                     #(some? (get-in @repls [%2 %1])))]
     (condp find-repl project-name
-      :host-input-editor (execute project-name code (when namespace {:ns namespace}))
+      :host-input-editor (execute project-name code namespace)
       :guest-input-editor (append-to-editor (get-in @repls [project-name :guest-input-editor])
                                             (str code execute-comment)
                                             :add-newline? false)
