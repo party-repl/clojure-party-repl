@@ -2,8 +2,8 @@
   (:require [cljs.nodejs :as node]
             [clojure.string :as string]
             [oops.core :refer [oget oset! oset!+ ocall]]
-            [clojure-repl.common :refer [console-log repls state add-repl-history]]
-            [clojure-repl.bencode :as bencode :refer [encode decode]]
+            [clojure-repl.common :refer [console-log repls add-repl-history]]
+            [clojure-repl.bencode :refer [encode decode]]
             [clojure-repl.repl :as repl]
             [cljs.core.async :as async :refer [chan timeout close! <! >! alts!]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
@@ -14,9 +14,6 @@
 (defn timeout-chan [& [msecs]]
   (timeout (or msecs (.-MAX_SAFE_INTEGER js/Number))))
 
-;; One cool aspect of alts!! is that you can give it a timeout channel,
-;; which waits the specified number of milliseconds and then closes. It’s
-;; an elegant mechanism for putting a time limit on concurrent operations.
 (defn send
   [connection message callback]
   (let [id (or (get message "id")
@@ -53,9 +50,13 @@
 
 (def connection-template
   {:socket-connection nil
-   :output-channel nil
+   :output-chan nil
    :queued-messages nil
-   :callbacks nil})
+   :callbacks nil
+   :decode {:bytes 0
+            :position 0
+            :data nil
+            :encoding ""}})
 
 (defn ^:private has-done-message? [messages]
   (and (coll? messages)
@@ -97,7 +98,7 @@
     (go-loop []
       (when-let [messages (<! message-chan)]
         (console-log "Messages: " messages)
-        (>! (:output-channel connection) messages)
+        (>! (:output-chan connection) messages)
         (doseq [message-js messages]
           (let [id (.-id message-js)]
             (swap! (:queued-messages connection) update id conj message-js)
@@ -133,7 +134,7 @@
   [{:keys [host port project-name]} callback]
   (let [socket-connection (net.Socket.)
         connection (assoc connection-template :socket-connection socket-connection
-                                              :output-channel (chan)
+                                              :output-chan (chan)
                                               :queued-messages (atom {})
                                               :callbacks (atom {}))]
     (.on socket-connection "error" (fn [error]
@@ -181,7 +182,7 @@ to the current namespace.")
         {:keys [connection session current-ns]} (get @repls project-name)
         options {"session" session
                  "ns" (or namespace current-ns)}]
-    (swap! state assoc :most-recent-repl-project-name project-name)
+    (repl/update-most-recent-repl project-name)
     (repl/append-to-output-editor project-name code)
     (add-repl-history project-name code)
     (eval connection
@@ -192,10 +193,10 @@ to the current namespace.")
               (console-log "Resending code to the current namespace...")
               (repl/execute-code project-name code))))))
 
-(defn output-namespace [project-name]
+(defn ^:private output-namespace [project-name]
   (repl/append-to-output-editor project-name (str (get-in @repls [project-name :current-ns]) "=> ") :add-newline? false))
 
-(defn output-message [project-name message-js]
+(defn ^:private output-message [project-name message-js]
   (when (.-ns message-js)
     (swap! repls update project-name #(assoc % :current-ns (.-ns message-js))))
   (if (.-out message-js)
@@ -205,14 +206,14 @@ to the current namespace.")
       (when (.-err message-js)
         (repl/append-to-output-editor project-name (.-err message-js))))))
 
-(defn filter-by-session [session messages]
+(defn ^:private filter-by-session [session messages]
   (filter #(= (.-session %) session) messages))
 
-(defn handle-messages
-  ""
+(defn ^:private handle-messages
+  "Outputs messages as they come into the output channel."
   [project-name connection]
   (console-log "Handler called...")
-  (let [output-chan (:output-channel connection)]
+  (let [output-chan (:output-chan connection)]
     (go-loop []
       (when-let [messages (<! output-chan)]
         (console-log "Handleing messages..." messages)
@@ -224,10 +225,6 @@ to the current namespace.")
             (when (has-done-message? filtered-messages)
               (output-namespace project-name))))
         (recur)))))
-
-(defn update-most-recent-repl [project-name]
-  (when (nil? (get @state :most-recent-repl-project-name))
-    (swap! state assoc :most-recent-repl-project-name project-name)))
 
 (comment "Closes the nrepl connection and kills the lein process. This will also kill
 all the child processes created by the lein process.")
@@ -245,8 +242,6 @@ all the child processes created by the lein process.")
     (swap! repls update project-name #(assoc % :lein-process nil))))
 
 (defn connect-to-nrepl [project-name host port]
-  (when (get @repls project-name)
-    (repl/stop-process project-name))
   (connect {:project-name project-name
             :host host
             :port port}
@@ -259,7 +254,7 @@ all the child processes created by the lein process.")
                               :repl-type :repl-type/nrepl
                               :connection connection
                               :session session))
-               (update-most-recent-repl project-name)
+               (repl/update-most-recent-repl project-name)
                (handle-messages project-name connection)
                (when-let [init-code (get-in @repls [project-name :init-code])]
                  (repl/execute-code project-name init-code))))))

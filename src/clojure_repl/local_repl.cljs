@@ -19,9 +19,9 @@
 (def process (node/require "process"))
 (def child-process (node/require "child_process"))
 
-(def lein-exec (string/split "lein repl" #" "))
+(def ^:private lein-exec (string/split "lein repl" #" "))
 
-(defn look-for-port
+(defn ^:private look-for-port
   "Searches for a port that nRepl server started on."
   [project-name data-string]
   (when (nil? (get-in @repls [project-name :port]))
@@ -30,18 +30,18 @@
       (swap! repls update project-name #(assoc % :port port))
       (nrepl/connect-to-nrepl project-name (get-in @repls [project-name :host]) port))))
 
-(defn look-for-ns
+(defn ^:private look-for-ns
   "Searches for a namespace that's currently set in the repl."
   [project-name data-string]
   (when-let [match (re-find #"(\S+)=>" data-string)]
     (console-log "Namespace found!!! " match " from " data-string)
     (swap! repls update project-name #(assoc % :current-ns (second match)))))
 
-(defn look-for-repl-info [project-name data-string]
+(defn ^:private look-for-repl-info [project-name data-string]
   (look-for-port project-name data-string)
   (look-for-ns project-name data-string))
 
-(defn setup-process
+(defn ^:private setup-process
   "Adding callbacks to all messages that lein process recieves."
   [project-name lein-process]
   (console-log "Setting up process...")
@@ -60,7 +60,7 @@
                              (console-log "Exiting repl... " code " " signal)
                              (swap! repls update project-name #(assoc % :lein-process nil)))))
 
-(defn start-lein-process
+(defn ^:private start-lein-process
   "Starts a lein repl process on project-path."
   [env project-path & args]
   (console-log "Starting lein process...")
@@ -75,7 +75,7 @@
                                                  :repl-type :repl-type/nrepl))
       (setup-process project-name lein-process))))
 
-(defn get-env
+(defn ^:private get-env
   "Setup the environment that lein process will run in."
   []
   (let [env (goog.object.clone (.-env process))]

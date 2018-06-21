@@ -8,7 +8,8 @@
 (defn reset-decode-data []
   (set! (.-data (.-decode bencode)) nil)
   (set! (.-encoding (.-decode bencode)) nil)
-  (set! (.-position (.-decode bencode)) 0))
+  (set! (.-position (.-decode bencode)) 0)
+  (set! (.-bytes (.-decode bencode)) 0))
 
 (defn ^:private decode-next
   "Returns a decoded data when it succeeds to decode. Returns nil when there's

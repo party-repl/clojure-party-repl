@@ -11,7 +11,6 @@
             [clojure-repl.guest :as guest]
             [clojure-repl.local-repl :as local-repl]
             [clojure-repl.remote-repl :as remote-repl]
-            [clojure-repl.nrepl :as nrepl]
             [clojure-repl.execution :as execution]
             [clojure-repl.connection-panel :as panel]
             [clojure-repl.strings :as strings]))
@@ -24,7 +23,7 @@
   (console-log "clojure-repl is whipping up a new local repl!")
   (if-let [project-path (common/get-project-path)]
     (let [project-name (common/get-project-name-from-path project-path)]
-      (if (get-in @repls [project-name :host-input-editor])
+      (if (get-in @repls [project-name :connection])
         (show-error "There's already a running REPL for the project " project-name)
         (do
           (common/add-repl project-name)
@@ -38,7 +37,7 @@
   (console-log "clojure-repl on the case!")
   (go
     (when-let [{:keys [host port project-name]} (<! (panel/prompt-connection-panel strings/nrepl-connection-message))]
-      (if (get-in @repls [project-name :host-input-editor])
+      (if (get-in @repls [project-name :connection])
         (show-error "There's already a REPL for a project " project-name " "
                     "connected to " host ":" port)
         (do

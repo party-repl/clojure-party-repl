@@ -2,12 +2,15 @@
   (:require [cljs.nodejs :as node]
             [clojure.string :as string]
             [oops.core :refer [oget ocall]]
-            [clojure-repl.common :as common :refer [repls
+            [clojure-repl.common :as common :refer [repls state
                                                     console-log]]))
 
 
 ;; TODO: Support having multiple REPLs
 ;; TODO: Support sending multiple messages to repl
+
+(defn update-most-recent-repl [project-name]
+  (swap! state assoc :most-recent-repl-project-name project-name))
 
 (defn append-to-output-editor
   "Appends text at the end of the output editor."
