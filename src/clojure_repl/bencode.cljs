@@ -1,15 +1,14 @@
 (ns clojure-repl.bencode
   (:require [cljs.nodejs :as node]
-            [oops.core :refer [oset!]]
+            [oops.core :refer [oget oset!]]
             [clojure-repl.common :refer [console-log]]))
 
 (def bencode (node/require "bencode"))
 
 (defn reset-decode-data []
-  (set! (.-data (.-decode bencode)) nil)
-  (set! (.-encoding (.-decode bencode)) nil)
-  (set! (.-position (.-decode bencode)) 0)
-  (set! (.-bytes (.-decode bencode)) 0))
+  (oset! (.-decode bencode) "data" nil)
+  (oset! (.-decode bencode) "encoding" nil)
+  (oset! (.-decode bencode) "position" 0))
 
 (defn ^:private decode-next
   "Returns a decoded data when it succeeds to decode. Returns nil when there's
@@ -34,13 +33,25 @@
   [data]
   (console-log "Concat and decode...")
   (let [new-data (.concat js/Buffer (js/Array. (.-data (.-decode bencode)) (js/Buffer. data)))]
-    (set! (.-data (.-decode bencode)) new-data)
+    (oset! (.-decode bencode) "data" new-data)
     (decode-all [])))
 
 (defn ^:private decoded-all? []
   (or (nil? (.-data (.-decode bencode)))
       (= (.-length (.-data (.-decode bencode)))
          (.-position (.-decode bencode)))))
+
+(defn get-decode-data []
+  {:data (oget (.-decode bencode) "data")
+   :position (oget (.-decode bencode) "position")
+   :encoding (oget (.-decode bencode) "encoding")})
+
+(defn apply-decode-data [{:keys [data position encoding]}]
+  (console-log "Applying decode data..." position)
+  (when (and data (not= (.-length data) position))
+    (oset! (.-decode bencode) "data" data)
+    (oset! (.-decode bencode) "position" position)
+    (oset! (.-decode bencode) "encoding" encoding)))
 
 (defn decode
   "Returns a vector of decoded data in case the encoded data includes multiple

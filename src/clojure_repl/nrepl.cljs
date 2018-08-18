@@ -3,7 +3,7 @@
             [clojure.string :as string]
             [oops.core :refer [oget oset! oset!+ ocall]]
             [clojure-repl.common :refer [console-log repls add-repl-history]]
-            [clojure-repl.bencode :refer [encode decode]]
+            [clojure-repl.bencode :as bencode]
             [clojure-repl.repl :as repl]
             [cljs.core.async :as async :refer [chan timeout close! <! >! alts!]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
@@ -11,8 +11,19 @@
 (def net (node/require "net"))
 (def process (node/require "process"))
 
-(defn timeout-chan [& [msecs]]
-  (timeout (or msecs (.-MAX_SAFE_INTEGER js/Number))))
+(def timeout-msec 5000)
+
+(defn timeout-chan []
+  (timeout (or timeout-msec (.-MAX_SAFE_INTEGER js/Number))))
+
+(defn ^:private apply-decode-data [connection]
+  (bencode/apply-decode-data @(:decode connection)))
+
+(defn ^:private cache-decode-data [connection]
+  (let [{:keys [data position encoding]} (bencode/get-decode-data)]
+    (swap! (:decode connection) assoc :data data
+                                      :position position
+                                      :encoding encoding)))
 
 (defn send
   [connection message callback]
@@ -21,7 +32,8 @@
         message-js (clj->js (assoc message "id" id))]
     (swap! (:queued-messages connection) assoc id [])
     (swap! (:callbacks connection) assoc id callback)
-    (.write (:socket-connection connection) (encode message-js))))
+    (apply-decode-data connection)
+    (.write (:socket-connection connection) (bencode/encode message-js))))
 
 (defn eval [connection code options callback]
   (send connection
@@ -53,10 +65,7 @@
    :output-chan nil
    :queued-messages nil
    :callbacks nil
-   :decode {:bytes 0
-            :position 0
-            :data nil
-            :encoding ""}})
+   :decode nil})
 
 (defn ^:private has-done-message? [messages]
   (and (coll? messages)
@@ -80,7 +89,7 @@
   (go-loop []
     (console-log "Consuming data...")
     (if-let [chunk (.read socket-connection)]
-      (let [messages (decode chunk)]
+      (let [messages (bencode/decode chunk)]
         (when-not (empty? messages)
           (console-log "Decoded data...")
           (>! message-chan messages)
@@ -96,14 +105,16 @@
   (console-log "Reading data... ")
   (let [message-chan (chan)]
     (go-loop []
-      (when-let [messages (<! message-chan)]
-        (console-log "Messages: " messages)
-        (>! (:output-chan connection) messages)
-        (doseq [message-js messages]
-          (let [id (.-id message-js)]
-            (swap! (:queued-messages connection) update id conj message-js)
-            (callback-with-queued-messages connection id)))
-        (recur)))
+      (if-let [messages (<! message-chan)]
+        (do
+          (console-log "Messages: " messages)
+          (>! (:output-chan connection) messages)
+          (doseq [message-js messages]
+            (let [id (.-id message-js)]
+              (swap! (:queued-messages connection) update id conj message-js)
+              (callback-with-queued-messages connection id)))
+          (recur))
+        (cache-decode-data connection)))
     (consume-all-data (:socket-connection connection) message-chan)))
 
 ;; TODO: Support having multiple connections to REPL using bencode.
@@ -136,7 +147,10 @@
         connection (assoc connection-template :socket-connection socket-connection
                                               :output-chan (chan)
                                               :queued-messages (atom {})
-                                              :callbacks (atom {}))]
+                                              :callbacks (atom {})
+                                              :decode (atom {:position 0
+                                                             :data nil
+                                                             :encoding ""}))]
     (.on socket-connection "error" (fn [error]
                                      (console-log "Error: " error ". The socket will be closed.")))
     (.on socket-connection "close" (fn [had-error?]
