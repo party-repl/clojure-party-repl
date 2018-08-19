@@ -50,23 +50,9 @@
   [element value]
   (set! (.-color (.-style element)) value))
 
-(defn get-all-project-names []
-  (->> (.getPaths (.-project js/atom))
-       (map common/get-project-name-from-path)))
-
-(defn ^:private create-drop-down []
-  (let [project-select (doto (.createElement js/document "select")
-                             (.setAttribute "tabindex" -1)
-                             (set-text-color "black"))]
-    (doseq [project-name (get-all-project-names)]
-      (.appendChild project-select
-                    (doto (.createElement js/document "option")
-                          (.setAttribute "value" project-name)
-                          (set-text project-name))))
-    project-select))
-
 (defn ^:private create-connection-panel-dom
-  "Builds the DOM for the modal panel."
+  "Builds the DOM for the modal panel and returns a map of UI components to be
+  stored in the ui-components atom."
   []
   (let [default-host "localhost"
         default-port ""
@@ -93,7 +79,9 @@
                                 (.setAttribute "class" "block"))
         project-label (.createElement js/document "div")
         project-subview (.createElement js/document "subview")
-        project-select (create-drop-down)]
+        project-select (doto (.createElement js/document "select")
+                             (.setAttribute "tabindex" -1)
+                             (set-text-color "black"))]
     (set-text host-label strings/connection-panel-host)
     (set-text port-label strings/connection-panel-port)
     (set-text project-label strings/connection-panel-project)
@@ -116,6 +104,22 @@
      :port-editor port-editor
      :project-select project-select}))
 
+(defn ^:private update-project-select
+  "Clears all of the children from the project-select dropdown and fills it with
+  all of the currently open projects, selecting the project for the currently
+  active editor."
+  [project-select]
+  (set! (.-innerHTML project-select) "") ; The most performant method for removing all children
+  (let [active-project-name (common/get-active-project-name)]
+    (doseq [project-name (common/get-all-project-names)]
+      (let [option (doto (.createElement js/document "option")
+                         (.setAttribute "value" project-name)
+                         (set-text project-name))]
+        (when (= project-name active-project-name)
+          (.setAttribute option "selected" true))
+        (.appendChild project-select option)))))
+
+;; TODO: Check for duplicate project names and raise an error
 (defn ^:private add-connection-panel-commands
   "Adds Atom commands to listen to the enter and escape keys.
 
@@ -158,7 +162,6 @@
     (.addEventListener host-editor "keydown" keydown)
     (.addEventListener port-editor "keydown" keydown)))
 
-;; TODO: Read the port from a .nrepl-port file in the current project if it exists
 (defn create-connection-panel
   "Creates the connection panel and leaves it hidden until
   the user is prompted."
@@ -172,6 +175,7 @@
     (add-connection-panel-tab-listeners components)
     (reset! ui-components components)))
 
+;; TODO: Read the port from a .nrepl-port file in the current project if it exists
 (defn prompt-connection-panel
   "Interupts the user with a modal connection panel asking for
   a socket address to connect to, returning the result through
@@ -179,14 +183,15 @@
 
   Returns false if the user cancels the prompt."
   [message]
-  (let [{:keys [panel header
-                host-editor port-editor]} @ui-components]
+  (let [{:keys [panel header host-editor
+                port-editor project-select]} @ui-components]
     (go
       (if-not (.-visible panel)
         (do
           (set-text header message)
           (set-text host-editor "")
           (set-text port-editor "")
+          (update-project-select project-select)
           (.show panel)
           (.focus host-editor)
           (<! address-channel))

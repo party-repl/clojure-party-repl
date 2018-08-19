@@ -20,8 +20,7 @@
 (defn start-local-repl
   "Exported plugin command. Starts new processes to run the repl."
   []
-  (console-log "clojure-repl is whipping up a new local repl!")
-  (if-let [project-path (common/get-project-path)]
+  (if-let [project-path (common/get-active-project-path)]
     (let [project-name (common/get-project-name-from-path project-path)]
       (if (get-in @repls [project-name :connection])
         (show-error "There's already a running REPL for the project " project-name)
@@ -34,7 +33,6 @@
 (defn connect-to-nrepl
   "Exported plugin command. Connects to an existing nrepl by host and port."
   [event]
-  (console-log "clojure-repl on the case!")
   (go
     (when-let [{:keys [host port project-name]} (<! (panel/prompt-connection-panel strings/nrepl-connection-message))]
       (if (get-in @repls [project-name :connection])

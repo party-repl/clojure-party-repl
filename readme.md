@@ -102,7 +102,7 @@ Now that we've got dynamic code-reloading and a ClojureScript REPL into Atom,
 let's take this thing for a spin.
 
 The easiest way to work on the plugin is to open a new Clojure project
-in Atom in Dev Mode. If you don't have a dummy project around `lein new app test-project`
+in Atom in Dev Mode. If you don't have a dummy project around `()) new app test-project`
 will make one. Open the new project by going to View -> Developer -> Open In Dev Mode,
 and then open the development console View -> Developer -> Toggle Developer Tools to
 show any possible errors preventing the plugin from starting.

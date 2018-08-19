@@ -1,4 +1,5 @@
 (ns clojure-repl.common
+  "The garage for storing code we need but don't know where to keep it."
   (:require [cljs.nodejs :as node]
             [cljs.pprint :refer [pprint]]
             [clojure.string :as string]))
@@ -84,20 +85,35 @@
 ;;       should, however, allow user to open one big folder that contains
 ;;       multiple projects.
 (defn get-project-path
-  "Returns the project path of the given editor or the active editor."
-  ([]
-   (get-project-path (.getActiveTextEditor (.-workspace js/atom))))
-  ([text-editor]
-   (let [path (.getPath (.getBuffer text-editor))
-         [directory-path, relative-path] (.relativizePath (.-project js/atom) path)]
-     (when directory-path
-       (console-log "----Project---->" directory-path " - " relative-path)
-       (get-project-directory-from-path directory-path relative-path)))))
+  "Returns the project path of the given editor or nil if there is no project
+  associated with the text-editor."
+  [text-editor]
+  (let [path (.getPath (.getBuffer text-editor))
+        [directory-path, relative-path] (.relativizePath (.-project js/atom) path)]
+    (when directory-path
+      (get-project-directory-from-path directory-path relative-path))))
+
+(defn get-active-project-path
+  "Returns the path of the project that corresponds to the active editor or nil
+  if no project is associated with the active text editor."
+  []
+  (get-project-path (.getActiveTextEditor (.-workspace js/atom))))
 
 (defn get-project-name-from-path
-  "Returns the project name from the given path."
+  "Returns the project name from the given path or nil."
   [project-path]
-  (last (string/split project-path #"/")))
+  (when project-path
+    (last (string/split project-path #"/"))))
+
+(defn get-active-project-path
+  "Returns the path of the project that corresponds to the active editor or nil
+  if no project is associated with the active text editor."
+  []
+  (get-project-path (.getActiveTextEditor (.-workspace js/atom))))
+
+(defn get-active-project-name
+  []
+  (get-project-name-from-path (get-active-project-path)))
 
 (defn get-project-name-from-text-editor
   "Returns the project name from the path of the text editor."
@@ -132,6 +148,15 @@
                    (visible-repl? (get-in @repls [% :guest-input-editor])))
             %)
         (keys @repls)))
+
+(defn get-all-project-names
+  "Returns a list of all the current project names.
+
+  NOTE: Atom can have multiple projects open at the same time with the same name
+  if they are in different directories."
+  []
+  (->> (.getPaths (.-project js/atom))
+       (map get-project-name-from-path)))
 
 (defn add-repl [project-name & options]
   (swap! repls assoc project-name (-> (apply assoc repl-state options)

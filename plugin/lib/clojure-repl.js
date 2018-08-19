@@ -8,13 +8,13 @@
   }
 })(this, function () {
     
-var SHADOW_IMPORT_PATH = "/Users/Shared/clojure-repl/.shadow-cljs/builds/app/dev/out/cljs-runtime";
+var SHADOW_IMPORT_PATH = "/Users/Hans/Projects/clojure-repl/.shadow-cljs/builds/app/dev/out/cljs-runtime";
 global.$CLJS = global;
 try {require('source-map-support').install();} catch (e) {console.warn('no "source-map-support" (run "npm install source-map-support --save-dev" to get it)');}
 
 global.CLOSURE_NO_DEPS = true;
 
-global.CLOSURE_DEFINES = {"shadow.cljs.devtools.client.env.devtools_url":"","shadow.cljs.devtools.client.env.autoload":true,"shadow.cljs.devtools.client.env.proc_id":"deeedbbb-5da0-48e5-8f2b-cc878cf6ee61","shadow.cljs.devtools.client.env.use_document_host":true,"shadow.cljs.devtools.client.env.module_format":"goog","shadow.cljs.devtools.client.env.before_load_async":null,"shadow.cljs.devtools.client.env.repl_host":"0.0.0.0","shadow.cljs.devtools.client.env.build_id":"app","goog.DEBUG":true,"cljs.core._STAR_target_STAR_":"nodejs","shadow.cljs.devtools.client.env.reload_with_state":false,"shadow.cljs.devtools.client.env.after_load":"clojure_repl.core.start","shadow.cljs.devtools.client.env.ssl":false,"shadow.cljs.devtools.client.env.before_load":"clojure_repl.core.stop","shadow.cljs.devtools.client.env.repl_port":9630,"shadow.cljs.devtools.client.env.enabled":true};
+global.CLOSURE_DEFINES = {"shadow.cljs.devtools.client.env.devtools_url":"","shadow.cljs.devtools.client.env.autoload":true,"shadow.cljs.devtools.client.env.proc_id":"6088cf23-9eb3-4ea7-b611-ec3701f7a0f0","shadow.cljs.devtools.client.env.use_document_host":true,"shadow.cljs.devtools.client.env.module_format":"goog","shadow.cljs.devtools.client.env.before_load_async":null,"shadow.cljs.devtools.client.env.repl_host":"0.0.0.0","shadow.cljs.devtools.client.env.build_id":"app","goog.DEBUG":true,"cljs.core._STAR_target_STAR_":"nodejs","shadow.cljs.devtools.client.env.reload_with_state":false,"shadow.cljs.devtools.client.env.after_load":"clojure_repl.core.start","shadow.cljs.devtools.client.env.ssl":false,"shadow.cljs.devtools.client.env.before_load":"clojure_repl.core.stop","shadow.cljs.devtools.client.env.repl_port":9630,"shadow.cljs.devtools.client.env.enabled":true};
 
 var goog = global.goog = {};
 

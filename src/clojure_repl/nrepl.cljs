@@ -43,9 +43,9 @@
 
 (defn clone-connection
   ([connection callback]
-    (send connection {"op" "clone"} callback))
+   (send connection {"op" "clone"} callback))
   ([connection session callback]
-    (send connection {"op" "clone" "session" session} callback)))
+   (send connection {"op" "clone" "session" session} callback)))
 
 (defn close [connection]
   (.end (:socket-connection connection)))

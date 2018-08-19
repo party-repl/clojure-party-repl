@@ -4,4 +4,4 @@
 (def nrepl-connection-message "Connect to remote nREPL server")
 (def connection-panel-host "Host")
 (def connection-panel-port "Port")
-(def connection-panel-project "Project Name")
+(def connection-panel-project "Associate with Project")

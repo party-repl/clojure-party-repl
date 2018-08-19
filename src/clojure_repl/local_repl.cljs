@@ -6,7 +6,6 @@
                                                 append-to-output-editor]]
             [clojure-repl.nrepl :as nrepl]
             [clojure-repl.common :as common :refer [console-log
-                                                    get-project-path
                                                     get-project-name-from-path
                                                     repls
                                                     state]]))
