@@ -3,8 +3,7 @@
   "main": "./lib/clojure-repl",
   "version": "0.1.0",
   "description": "Clojure REPL for Atom with Teletype support",
-  "keywords": [
-  ],
+  "keywords": [],
   "repository": "",
   "license": "Eclipse Public License",
   "engines": {

@@ -53,6 +53,8 @@
     (oset! (.-decode bencode) "position" position)
     (oset! (.-decode bencode) "encoding" encoding)))
 
+;; TODO: Document why we're ignoring the exceptions here
+
 (defn decode
   "Returns a vector of decoded data in case the encoded data includes multiple
   data chunks. It needs to be in a try-catch block because it can throw when

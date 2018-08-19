@@ -7,12 +7,12 @@
 .repl
 .nrepl-*
 pom.xml
+node_modules
 /package.json
 /package-lock.json
 /classes/
 /out/
 /target/
-/node_modules
 /plugin/lib/
 /plugin/node_modules
 /resources/public/js/compiled/**

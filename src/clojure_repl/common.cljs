@@ -105,12 +105,6 @@
   (when project-path
     (last (string/split project-path #"/"))))
 
-(defn get-active-project-path
-  "Returns the path of the project that corresponds to the active editor or nil
-  if no project is associated with the active text editor."
-  []
-  (get-project-path (.getActiveTextEditor (.-workspace js/atom))))
-
 (defn get-active-project-name
   []
   (get-project-name-from-path (get-active-project-path)))

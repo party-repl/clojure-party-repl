@@ -169,7 +169,7 @@
     connection))
 
 ;; ---------------------------------------------------
-;; Connection should be enstablished as below:
+;; Connection should be established as below:
 ;; ---------------------------------------------------
 (defn ^:private namespace-not-found? [message]
   (when (.-status message)
@@ -187,10 +187,10 @@
                  (repl/pst throwable)
                  (throw (Exception. (str *err*)))))))"))
 
-(comment "Sends code over to repl with current namespace, or optional namespace if
-specified. When a namespace-not-found message is received, resend the code
-to the current namespace.")
 (defmethod repl/execute-code :repl-type/nrepl
+  ; Sends code over to repl with current namespace, or optional namespace if
+  ; specified. When a namespace-not-found message is received, resend the code
+  ; to the current namespace.
   [project-name code & [namespace]]
   (let [wrapped-code (wrap-to-catch-exception code)
         {:keys [connection session current-ns]} (get @repls project-name)
@@ -240,9 +240,9 @@ to the current namespace.")
               (output-namespace project-name))))
         (recur)))))
 
-(comment "Closes the nrepl connection and kills the lein process. This will also kill
-all the child processes created by the lein process.")
 (defmethod repl/stop-process :repl-type/nrepl
+  ; Closes the nrepl connection and kills the lein process. This will also kill
+  ; all the child processes created by the lein process.
   [project-name]
   (let [{:keys [connection lein-process]} (get @repls project-name)]
     (when connection
