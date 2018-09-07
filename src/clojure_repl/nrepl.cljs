@@ -65,7 +65,9 @@
    :output-chan nil
    :queued-messages nil
    :callbacks nil
-   :decode nil})
+   :decode {:data nil
+            :encoding nil
+            :position 0}})
 
 (defn ^:private has-done-message? [messages]
   (and (coll? messages)

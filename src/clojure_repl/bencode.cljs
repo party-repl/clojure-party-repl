@@ -14,17 +14,23 @@
   "Returns a decoded data when it succeeds to decode. Returns nil when there's
   no more data to be decoded or when there's only partial data."
   []
-  (try
-    (.next (.-decode bencode))
-    (catch js/Error e)))
+  (let [previous-position (.-position (.-decode bencode))]
+    (try
+      (.next (.-decode bencode))
+      (catch js/Error e
+        (when (> (.-position (.-decode bencode))
+                 (.-length (.-data (.-decode bencode))))
+          (oset! (.-decode bencode) "position" previous-position))
+        (console-log "Caught " e)))))
 
 (defn ^:private decode-all
   "Returns a vector of decoded data that was possible to decode as far as
   it could."
-  [coll]
-  (loop [all-data coll]
+  []
+  (loop [all-data []]
     (if-let [decoded-data (decode-next)]
-      (recur (conj all-data decoded-data))
+      (do
+        (recur (conj all-data decoded-data)))
       all-data)))
 
 (defn ^:private concat-data-and-decode
@@ -34,9 +40,13 @@
   (console-log "Concat and decode...")
   (let [new-data (.concat js/Buffer (js/Array. (.-data (.-decode bencode)) (js/Buffer. data)))]
     (oset! (.-decode bencode) "data" new-data)
-    (decode-all [])))
+    (decode-all)))
 
 (defn ^:private decoded-all? []
+  (console-log "Decoded All?: " (when (.-data (.-decode bencode))
+                                  (.-length (.-data (.-decode bencode))))
+                                (when (.-data (.-decode bencode))
+                                  (.-position (.-decode bencode))))
   (or (nil? (.-data (.-decode bencode)))
       (= (.-length (.-data (.-decode bencode)))
          (.-position (.-decode bencode)))))
@@ -48,10 +58,11 @@
 
 (defn apply-decode-data [{:keys [data position encoding]}]
   (console-log "Applying decode data..." position)
-  (when (and data (not= (.-length data) position))
+  (when (and data position (not= (.-length data) position))
     (oset! (.-decode bencode) "data" data)
     (oset! (.-decode bencode) "position" position)
-    (oset! (.-decode bencode) "encoding" encoding)))
+    (oset! (.-decode bencode) "encoding" encoding)
+    (console-log "Applied data: " (.-length (.-data (.-decode bencode))) (.-position (.-decode bencode)))))
 
 (defn decode
   "Returns a vector of decoded data in case the encoded data includes multiple
@@ -69,10 +80,17 @@
   [data]
   (if (decoded-all?)
     (try
-      (console-log "Decoding...")
-      (let [decoded-data (.decode bencode data "utf8")]
-        (decode-all [decoded-data]))
-      (catch js/Error e))
+      (console-log "Decoding..." (.-length data))
+      (console-log "Position: " (.-position (.-decode bencode)))
+      (do
+        (apply-decode-data {:data data
+                            :position 0
+                            :encoding "utf8"})
+        (decode-all))
+      (catch js/Error e
+        (console-log "Caught Error during decoding: ")
+        (console-log "( Position:" (.-position (.-decode bencode)) " )")
+        (console-log e)))
     (concat-data-and-decode data)))
 
 (defn encode [data]
