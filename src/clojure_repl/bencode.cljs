@@ -42,7 +42,7 @@
     (oset! (.-decode bencode) "data" new-data)
     (decode-all)))
 
-(defn ^:private decoded-all? []
+(defn decoded-all? []
   (console-log "Decoded All?: " (when (.-data (.-decode bencode))
                                   (.-length (.-data (.-decode bencode))))
                                 (when (.-data (.-decode bencode))

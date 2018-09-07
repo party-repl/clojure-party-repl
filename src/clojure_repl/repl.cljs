@@ -9,6 +9,9 @@
 ;; TODO: Support having multiple REPLs
 ;; TODO: Support sending multiple messages to repl
 
+(defn get-most-recent-repl []
+  (get @state :most-recent-repl-project-name))
+
 (defn update-most-recent-repl [project-name]
   (swap! state assoc :most-recent-repl-project-name project-name))
 

@@ -21,11 +21,20 @@
 
 (defn ^:private cache-decode-data [connection]
   (let [{:keys [data position encoding]} (bencode/get-decode-data)]
-    (swap! (:decode connection) assoc :data data
-                                      :position position
-                                      :encoding encoding)))
+    (when-not (bencode/decoded-all?)
+      (swap! (:decode connection) assoc :data data
+                                        :position position
+                                        :encoding encoding))))
+
+(defn ^:private swap-decode-data [project-name connection]
+  (let [previous-project-name (repl/get-most-recent-repl)]
+    (when (and previous-project-name
+              (not= previous-project-name project-name))
+      (cache-decode-data (get-in @repls [previous-project-name :connection]))
+      (apply-decode-data connection))))
 
 (defn send
+  ""
   [connection message callback]
   (let [id (or (get message "id")
                (.-uuid (random-uuid)))
@@ -87,15 +96,17 @@
   "Keeps reading data from the socket until it's been depleated. All data is
   decoded and put into a channel. The channel is closed when no more data
   can be read from the socket."
-  [socket-connection message-chan]
+  [project-name connection message-chan]
   (go-loop []
     (console-log "Consuming data...")
-    (if-let [chunk (.read socket-connection)]
-      (let [messages (bencode/decode chunk)]
-        (when-not (empty? messages)
-          (console-log "Decoded data...")
-          (>! message-chan messages)
-          (recur)))
+    (if-let [chunk (.read (:socket-connection connection))]
+      (do
+        (swap-decode-data project-name connection)
+        (let [messages (bencode/decode chunk)]
+          (when-not (empty? messages)
+            (console-log "Decoded data...")
+            (>! message-chan messages)
+          (recur))))
       (close! message-chan))))
 
 (defn ^:private read-data
@@ -103,7 +114,7 @@
   to be read. This consumes all available data on socket and put them in
   output-channel after converting them into messages. message-chan will
   eventually takes nil out and breaks out of loop-recur when it's been closed."
-  [connection]
+  [project-name connection]
   (console-log "Reading data... ")
   (let [message-chan (chan)]
     (go-loop []
@@ -117,7 +128,7 @@
               (callback-with-queued-messages connection id)))
           (recur))
         (cache-decode-data connection)))
-    (consume-all-data (:socket-connection connection) message-chan)))
+    (consume-all-data project-name connection message-chan)))
 
 ;; TODO: Support having multiple connections to REPL using bencode.
 ;; TODO: Support type ahead by creating a new session to send the code.
@@ -128,7 +139,7 @@
 
 ;; TODO: Handle clone error
 (defn ^:private get-new-session-message
-  [connection]
+  [project-name connection]
   (let [message-chan (chan)]
     (go
       (when-let [messages (<! message-chan)]
@@ -137,7 +148,7 @@
             (console-log "Message: " message-js)
             (swap! (:queued-messages connection) update id conj message-js)
             (callback-with-queued-messages connection id)))))
-    (consume-all-data (:socket-connection connection) message-chan)))
+    (consume-all-data project-name connection message-chan)))
 
 (defn connect
   "Makes a socket connection at the given host and port.
@@ -152,7 +163,7 @@
                                               :callbacks (atom {})
                                               :decode (atom {:position 0
                                                              :data nil
-                                                             :encoding ""}))]
+                                                             :encoding "utf8"}))]
     (.on socket-connection "error" (fn [error]
                                      (console-log "Error: " error ". The socket will be closed.")))
     (.on socket-connection "close" (fn [had-error?]
@@ -163,10 +174,10 @@
               port
               host
               (fn []
-                (.once socket-connection "readable" #(get-new-session-message connection))
+                (.once socket-connection "readable" #(get-new-session-message project-name connection))
                 (clone-connection connection
                                   (fn [err messages]
-                                    (.on socket-connection "readable" #(read-data connection))
+                                    (.on socket-connection "readable" #(read-data project-name connection))
                                     (callback connection (oget (get messages 0) "new-session"))))))
     connection))
 
@@ -193,13 +204,14 @@
 specified. When a namespace-not-found message is received, resend the code
 to the current namespace.")
 (defmethod repl/execute-code :repl-type/nrepl
-  [project-name code & [namespace]]
+  [project-name code & [namespace resent?]]
   (let [wrapped-code (wrap-to-catch-exception code)
         {:keys [connection session current-ns]} (get @repls project-name)
         options {"session" session
                  "ns" (or namespace current-ns)}]
     (repl/update-most-recent-repl project-name)
-    (repl/append-to-output-editor project-name code)
+    (when-not resent?
+      (repl/append-to-output-editor project-name code))
     (add-repl-history project-name code)
     (eval connection
           wrapped-code
@@ -207,7 +219,7 @@ to the current namespace.")
           (fn [errors messages] ;; TODO: Do we need try-catch to resend code?
             (when (namespace-not-found? (last messages))
               (console-log "Resending code to the current namespace...")
-              (repl/execute-code project-name code))))))
+              (repl/execute-code project-name code nil true))))))
 
 (defn ^:private output-namespace [project-name]
   (repl/append-to-output-editor project-name (str (get-in @repls [project-name :current-ns]) "=> ") :add-newline? false))
@@ -249,6 +261,10 @@ all the child processes created by the lein process.")
   (let [{:keys [connection lein-process]} (get @repls project-name)]
     (when connection
       (close connection))
+    (when (= (repl/get-most-recent-repl) project-name)
+      (bencode/reset-decode-data))
+    (when (= :remote lein-process)
+      (console-log "Remote repl connection closed!"))
     (when-not (contains? #{:remote nil} lein-process)
       (console-log "Killing process... " (.-pid lein-process))
       (.removeAllListeners lein-process)

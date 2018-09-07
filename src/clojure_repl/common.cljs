@@ -42,7 +42,7 @@
          :lein-path "/usr/local/bin" ;; TODO: Read this from Settings
          :most-recent-repl-project-name nil}))
 
-; TODO: Can we just use println and the like instead?
+; TODO: Only output when in dev mode?
 (defn console-log
   "Used for development. The output can be viewed in the Atom's Console when in
   Dev Mode."
