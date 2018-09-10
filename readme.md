@@ -6,7 +6,7 @@ Clojure REPL for Atom written in ClojureScript with full Teletype support for pa
 
 
 ## Wet Paint
-This project is still alpha quality. It works — core features are in place, but it's not quite ready to be published to Atom's Package manager yet. If you want to start using it now though, follow the [development instructions](#development).
+This project is beta quality, almost ready to be published to Atom's Package manager. If you want to start using it now though, follow the [development instructions](#development).
 
 
 ## How to use this
@@ -122,11 +122,12 @@ Exported functions can be linked to keybindings and menu items, checkout the sta
 ## Roadmap
 
 ### Core features
+- [ ] Write new nREPL client in ClojureScript *(in progress)*
 - [x] Support for Leiningen
 - [ ] Support for Boot
 - [x] Support for remote nREPLs
 - [ ] Support for Socket REPLs (clojure.core style REPLs)
-- [ ] unRepl support
+- [ ] unRepl support *(in progress)*
 - [ ] Add line number and file metadata to stacktraces.
 - [ ] ClojureScript support
 
@@ -139,18 +140,17 @@ Exported functions can be linked to keybindings and menu items, checkout the sta
 
 
 ### Using multiple REPLs simultaneously support
-- [ ] When executing code from a file, find which project the file is in, and run the code in the REPL that corresponds to that project. Otherwise, fall back to the last used REPL. How can we do this on the guest side which doesn't have access to all the files?
-- [ ] Add the project name to the title of the REPL editors
-- [ ] If multiple REPLs are open, instead of choosing a REPL by project, add an option to execute code in the REPL that is currently visible in the editor. For example, if you have multiple REPLs tabs open, it will choose the one that's visible and not in the background. Or if multiple REPLs are visible on screen (or all of them not on screen) fall back to the last recently used REPL.
+- [ ] When executing code from a file, find which project the file is in, and run the code in the REPL that corresponds to that project. Otherwise, fall back to the last used REPL. How can we do this on the guest side which doesn't have access to all the files? *(in progress)*
+- [ ] Add the project name to the title of the REPL editors *(in progress)*
+- [ ] If multiple REPLs are open, instead of choosing a REPL by project, add an option to execute code in the REPL that is currently visible in the editor. For example, if you have multiple REPLs tabs open, it will choose the one that's visible and not in the background. Or if multiple REPLs are visible on screen (or all of them not on screen) fall back to the last recently used REPL. *(in progress)*
 
 
 ### User interface improvements
 - [ ] Integrate with Atom IDE
-- [ ] When executing code, temporarily highlight the top-level form or the selected code being sent to the REPL. Likewise, somehow indicate when there's a syntax error preventing a top-level form from being found.
+- [x] When executing code, temporarily highlight the top-level form or the selected code being sent to the REPL. Likewise, somehow indicate when there's a syntax error preventing a top-level form from being found.
 - [ ] Create a new kind of Pane which holds both the REPL input-editor and output-editor.
 - [ ] Add buttons to REPL Pane like "Execute" and "Clear history".
 - [ ] Make the "Execute" button dynamically switch to "Cancel" when a long running command is executed (this should work seamlessly on the guest side too).
-- [ ] Create a custom Atom grammar for the REPL history editor, ideally this would draw horizontal lines between each REPL entry.
 - [ ] Make the output-editor (history) read-only.
 
 
@@ -163,7 +163,7 @@ Exported functions can be linked to keybindings and menu items, checkout the sta
 ### Polish
 - [x] Add support for multiple Atom projects. When starting a REPL either start it in the project for the current file, or prompt the user and ask which file.
 - [x] Add support for multiple remote REPLs. When starting a REPL prompt the user and ask which project.
-- [ ] Update the our namespace detection regex to allow for all valid characters in a namespace: include $=<>_
+- [ ] Update our namespace detection regex to allow for all valid characters in a namespace: include $=<>_
 - [ ] Only allow one command to execute at a time. If we execute code in the REPL, either from a file or directly from the input-editor, it should show a spinner in the REPL UI and ignore the command.
 - [ ] Compile out a release version with advanced optimizations and all of the REPL/dynamic reloading shadow-cljs features turned off.
 
@@ -178,8 +178,15 @@ Exported functions can be linked to keybindings and menu items, checkout the sta
 is dedicated to stdout/stderr. Additionally, add an option to
 hook into all stdout/err streams on a remote socket REPL, so
 all output can be seen even from other threads.
-- [ ] Sayid debugging support
 - [ ] The ability to add breakpoints or wrap seamless print statements around blocks of code. These would be a first-class UI feature, imagine a purple box wrapped around code that would print it out, every time
+- [ ] Create a custom Atom grammar for the REPL history editor, ideally this would draw horizontal lines between each REPL entry.
+
+
+## Contributors (alphabetical)
+- [Aaron Brooks](https://github.com/abrooks)
+- [Chris Houser](https://github.com/Chouser)
+- [Hans Livingstone](https://hanslivingstone.com)
+- Tomomi Livingstone
 
 
 ## License
