@@ -56,8 +56,11 @@
    :position (oget (.-decode bencode) "position")
    :encoding (oget (.-decode bencode) "encoding")})
 
-(defn apply-decode-data [{:keys [data position encoding]}]
-  (console-log "Applying decode data..." position)
+(defn apply-decode-data
+  "Sets the given decode data as the bencode state if the data has not been
+  fully decoded."
+  [{:keys [data position encoding]}]
+  (console-log "Applying decode data...")
   (when (and data position (not= (.-length data) position))
     (oset! (.-decode bencode) "data" data)
     (oset! (.-decode bencode) "position" position)
@@ -80,20 +83,19 @@
   [data]
   (if (decoded-all?)
     (try
-      (console-log "Decoding..." (.-length data))
-      (console-log "Position: " (.-position (.-decode bencode)))
       (do
         (apply-decode-data {:data data
                             :position 0
                             :encoding "utf8"})
         (decode-all))
       (catch js/Error e
-        (console-log "Caught Error during decoding: ")
-        (console-log "( Position:" (.-position (.-decode bencode)) " )")
-        (console-log e)))
+        (console-log "Caught Error during decoding: " e)))
     (concat-data-and-decode data)))
 
-(defn encode [data]
+(defn encode
+  "Encodes the given data using bencode."
+  [data]
   (try
     (.encode bencode data "binary")
-    (catch js/Error e)))
+    (catch js/Error e
+      (console-log "Failed encoding because of " e))))

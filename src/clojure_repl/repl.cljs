@@ -6,7 +6,6 @@
                                                     console-log]]))
 
 
-;; TODO: Support having multiple REPLs
 ;; TODO: Support sending multiple messages to repl
 
 (defn get-most-recent-repl []
@@ -23,9 +22,7 @@
     (console-log "OUTPUT: " project-name output)))
 
 (defmulti stop-process
-  "Kills the local repl process, if any, and disconnects from the repl server.
-  Until we support multiple simultaneous repls, starting a repl will call this
-  first."
+  "Kills the local repl process, if any, and disconnects from the repl server."
   (fn [project-name]
     (get-in @repls [project-name :repl-type])))
 

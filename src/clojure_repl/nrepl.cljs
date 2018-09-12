@@ -33,8 +33,9 @@
       (cache-decode-data (get-in @repls [previous-project-name :connection]))
       (apply-decode-data connection))))
 
+;; TODO: Manage decode data with message id.
 (defn send
-  ""
+  "Writes a message onto the socket."
   [connection message callback]
   (let [id (or (get message "id")
                (.-uuid (random-uuid)))
@@ -84,7 +85,10 @@
        (.-status (last messages))
        (some #(= % "done") (.-status (last messages)))))
 
-(defn ^:private callback-with-queued-messages [connection id]
+(defn ^:private callback-with-queued-messages
+  "Calls a callback associated with messages with the id. The messages should
+  include a 'done' message, indicating the end of the messages."
+  [connection id]
   (when-let [messages (get @(:queued-messages connection) id)]
     (when (has-done-message? messages)
       (when-let [callback (get @(:callbacks connection) id)]
@@ -130,7 +134,6 @@
         (cache-decode-data connection)))
     (consume-all-data project-name connection message-chan)))
 
-;; TODO: Support having multiple connections to REPL using bencode.
 ;; TODO: Support type ahead by creating a new session to send the code.
 
 ;; Messages can be one of these types:
@@ -139,6 +142,8 @@
 
 ;; TODO: Handle clone error
 (defn ^:private get-new-session-message
+  "Reads the first message containing session id received after socket
+  connection has been established."
   [project-name connection]
   (let [message-chan (chan)]
     (go
@@ -221,10 +226,15 @@ to the current namespace.")
               (console-log "Resending code to the current namespace...")
               (repl/execute-code project-name code nil true))))))
 
-(defn ^:private output-namespace [project-name]
+(defn ^:private output-namespace
+  "Outputs the current namespace for the project onto the output editor."
+  [project-name]
   (repl/append-to-output-editor project-name (str (get-in @repls [project-name :current-ns]) "=> ") :add-newline? false))
 
-(defn ^:private output-message [project-name message-js]
+(defn ^:private output-message
+  "Outputs the message contents onto the output editor. If it contains a
+  namespace, updates the current namespace for the project."
+  [project-name message-js]
   (when (.-ns message-js)
     (swap! repls update project-name #(assoc % :current-ns (.-ns message-js))))
   (if (.-out message-js)
@@ -280,7 +290,6 @@ all the child processes created by the lein process.")
            (fn [connection session]
              (console-log "Connection succeeded!! " connection)
              (when session
-               (console-log "Session is here..." session)
                (swap! repls update project-name
                       #(assoc %
                               :repl-type :repl-type/nrepl

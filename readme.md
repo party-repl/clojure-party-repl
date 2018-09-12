@@ -122,7 +122,7 @@ Exported functions can be linked to keybindings and menu items, checkout the sta
 ## Roadmap
 
 ### Core features
-- [ ] Write new nREPL client in ClojureScript *(in progress)*
+- [x] Write new nREPL client in ClojureScript
 - [x] Support for Leiningen
 - [ ] Support for Boot
 - [x] Support for remote nREPLs
@@ -140,9 +140,9 @@ Exported functions can be linked to keybindings and menu items, checkout the sta
 
 
 ### Using multiple REPLs simultaneously support
-- [ ] When executing code from a file, find which project the file is in, and run the code in the REPL that corresponds to that project. Otherwise, fall back to the last used REPL. How can we do this on the guest side which doesn't have access to all the files? *(in progress)*
-- [ ] Add the project name to the title of the REPL editors *(in progress)*
-- [ ] If multiple REPLs are open, instead of choosing a REPL by project, add an option to execute code in the REPL that is currently visible in the editor. For example, if you have multiple REPLs tabs open, it will choose the one that's visible and not in the background. Or if multiple REPLs are visible on screen (or all of them not on screen) fall back to the last recently used REPL. *(in progress)*
+- [x] When executing code from a file, find which project the file is in, and run the code in the REPL that corresponds to that project. Otherwise, fall back to the last used REPL.
+- [x] Add the project name to the title of the REPL editors
+- [x] When an user sends code from an untitled/unsaved file, it should be sent to the current REPL.
 
 
 ### User interface improvements
