@@ -1,12 +1,12 @@
-(ns clojure-repl.host
+(ns clojure-party-repl.host
   (:require [clojure.string :as string :refer [ends-with? trim trim-newline replace]]
-            [clojure-repl.repl :as repl]
-            [clojure-repl.execution :as execution]
-            [clojure-repl.strings :refer [output-editor-title
+            [clojure-party-repl.repl :as repl]
+            [clojure-party-repl.execution :as execution]
+            [clojure-party-repl.strings :refer [output-editor-title
                                           input-editor-title
                                           execute-comment
                                           output-editor-placeholder]]
-            [clojure-repl.common :as common :refer [add-subscription
+            [clojure-party-repl.common :as common :refer [add-subscription
                                                     destroy-editor
                                                     dispose-project-if-empty
                                                     repls]]))

@@ -1,9 +1,9 @@
-(ns clojure-repl.guest
+(ns clojure-party-repl.guest
   (:require [clojure.string :as string :refer [starts-with? index-of]]
-            [clojure-repl.strings :refer [output-editor-title
+            [clojure-party-repl.strings :refer [output-editor-title
                                           input-editor-title
                                           execute-comment]]
-            [clojure-repl.common :as common :refer [add-subscription
+            [clojure-party-repl.common :as common :refer [add-subscription
                                                     destroy-editor
                                                     dispose-project-if-empty
                                                     add-repl

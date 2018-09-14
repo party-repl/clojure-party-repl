@@ -1,9 +1,9 @@
-(ns clojure-repl.execution
+(ns clojure-party-repl.execution
   (:require [clojure.string :as string]
             [cljs.nodejs :as node]
-            [clojure-repl.repl :as repl]
-            [clojure-repl.strings :refer [execute-comment]]
-            [clojure-repl.common :as common :refer [append-to-editor
+            [clojure-party-repl.repl :as repl]
+            [clojure-party-repl.strings :refer [execute-comment]]
+            [clojure-party-repl.common :as common :refer [append-to-editor
                                                     console-log
                                                     show-error
                                                     repls

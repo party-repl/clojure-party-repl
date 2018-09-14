@@ -75,10 +75,10 @@ apm link
 ```
 
 Next, restart Atom so it will notice the newly linked package. We just created a symlink
-from `~/.atom/packages/clojure-repl` to your project path (this is why you must be
+from `~/.atom/packages/clojure-party-repl` to your project path (this is why you must be
 inside the `plugin/` directory when creating the link).
 
-After restarting Atom, you should see the clojure-repl plugin installed and be able to use it.
+After restarting Atom, you should see the clojure-party-repl plugin installed and be able to use it.
 
 
 ### REPLing into the running project
@@ -97,7 +97,7 @@ This will connect you directly into the plugin so you can live develop it. You c
 Once we add CLJS support, you'll be able to REPL into the package using itself. 🐵
 
 
-### Testing and hacking on the clojure-repl
+### Testing and hacking on the clojure-party-repl
 Now that we've got dynamic code-reloading and a ClojureScript REPL into Atom,
 let's take this thing for a spin.
 
@@ -108,7 +108,7 @@ and then open the development console View -> Developer -> Toggle Developer Tool
 show any possible errors preventing the plugin from starting.
 
 
-### Adding new functionality to clojure-repl
+### Adding new functionality to clojure-party-repl
 The best place to start hacking is `core.clj`. This is where all
 the public functions that do interesting stuff are defined and exported.
 

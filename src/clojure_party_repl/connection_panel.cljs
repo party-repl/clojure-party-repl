@@ -1,11 +1,11 @@
-(ns clojure-repl.connection-panel
+(ns clojure-party-repl.connection-panel
   "Creates a model connection panel for prompting the user when connecting
   to a remote repl."
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [cljs.core.async :refer [chan <!] :as async]
             [clojure.string :as string]
-            [clojure-repl.strings :as strings]
-            [clojure-repl.common :as common]))
+            [clojure-party-repl.strings :as strings]
+            [clojure-party-repl.common :as common]))
 
 (def ^:private ui-components
   "A container for holding all of the ui components, both

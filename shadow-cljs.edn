@@ -2,14 +2,14 @@
  :lein true
  :nrepl {:port 5555}
  :builds {:app {:target :node-library
-                :exports {:activate clojure-repl.core/activate
-                          :deactivate clojure-repl.core/deactivate
-                          :connectToNrepl clojure-repl.core/connect-to-nrepl
-                          :startLocalRepl clojure-repl.core/start-local-repl
-                          :sendToRepl clojure-repl.core/send-to-repl
-                          :showNewerHistory clojure-repl.core/show-newer-repl-history
-                          :showOlderHistory clojure-repl.core/show-older-repl-history
-                          :consumeAutosave clojure-repl.core/consume-autosave}
-                :output-to "plugin/lib/clojure-repl.js"
-                :devtools {:before-load clojure-repl.core/stop
-                           :after-load clojure-repl.core/start}}}}
+                :exports {:activate clojure-party-repl.core/activate
+                          :deactivate clojure-party-repl.core/deactivate
+                          :connectToNrepl clojure-party-repl.core/connect-to-nrepl
+                          :startLocalRepl clojure-party-repl.core/start-local-repl
+                          :sendToRepl clojure-party-repl.core/send-to-repl
+                          :showNewerHistory clojure-party-repl.core/show-newer-repl-history
+                          :showOlderHistory clojure-party-repl.core/show-older-repl-history
+                          :consumeAutosave clojure-party-repl.core/consume-autosave}
+                :output-to "plugin/lib/clojure-party-repl.js"
+                :devtools {:before-load clojure-party-repl.core/stop
+                           :after-load clojure-party-repl.core/start}}}}

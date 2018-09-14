@@ -1,4 +1,4 @@
-(ns clojure-repl.common
+(ns clojure-party-repl.common
   (:require [cljs.nodejs :as node]
             [cljs.pprint :refer [pprint]]
             [clojure.string :as string]))

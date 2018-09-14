@@ -1,11 +1,11 @@
-(ns clojure-repl.local-repl
+(ns clojure-party-repl.local-repl
   (:require [cljs.nodejs :as node]
             [clojure.string :as string]
             [oops.core :refer [oset!]]
-            [clojure-repl.repl :as repl :refer [stop-process
+            [clojure-party-repl.repl :as repl :refer [stop-process
                                                 append-to-output-editor]]
-            [clojure-repl.nrepl :as nrepl]
-            [clojure-repl.common :as common :refer [console-log
+            [clojure-party-repl.nrepl :as nrepl]
+            [clojure-party-repl.common :as common :refer [console-log
                                                     get-project-path
                                                     get-project-name-from-path
                                                     repls

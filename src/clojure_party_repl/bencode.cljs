@@ -1,7 +1,7 @@
-(ns clojure-repl.bencode
+(ns clojure-party-repl.bencode
   (:require [cljs.nodejs :as node]
             [oops.core :refer [oget oset!]]
-            [clojure-repl.common :refer [console-log]]))
+            [clojure-party-repl.common :refer [console-log]]))
 
 (def bencode (node/require "bencode"))
 

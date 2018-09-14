@@ -1,10 +1,10 @@
-(ns clojure-repl.nrepl
+(ns clojure-party-repl.nrepl
   (:require [cljs.nodejs :as node]
             [clojure.string :as string]
             [oops.core :refer [oget oset! oset!+ ocall]]
-            [clojure-repl.common :refer [console-log repls add-repl-history]]
-            [clojure-repl.bencode :as bencode]
-            [clojure-repl.repl :as repl]
+            [clojure-party-repl.common :refer [console-log repls add-repl-history]]
+            [clojure-party-repl.bencode :as bencode]
+            [clojure-party-repl.repl :as repl]
             [cljs.core.async :as async :refer [chan timeout close! <! >! alts!]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 

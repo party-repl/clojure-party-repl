@@ -1,8 +1,8 @@
-(ns clojure-repl.repl
+(ns clojure-party-repl.repl
   (:require [cljs.nodejs :as node]
             [clojure.string :as string]
             [oops.core :refer [oget ocall]]
-            [clojure-repl.common :as common :refer [repls state
+            [clojure-party-repl.common :as common :refer [repls state
                                                     console-log]]))
 
 

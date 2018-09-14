@@ -1,6 +1,6 @@
 {
-  "name": "clojure-repl",
-  "main": "./lib/clojure-repl",
+  "name": "clojure-party-repl",
+  "main": "./lib/clojure-party-repl",
   "version": "0.1.0",
   "description": "Clojure REPL for Atom with Teletype support",
   "keywords": [

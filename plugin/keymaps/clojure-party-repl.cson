@@ -1,0 +1,18 @@
+# macOS keybindings:
+'.platform-darwin atom-workspace atom-text-editor:not([mini])':
+  'ctrl-alt-o': 'clojure-party-repl:startLocalRepl'
+  'cmd-enter': 'clojure-party-repl:sendToRepl'
+
+'.platform-darwin atom-workspace atom-text-editor:not([mini]).repl-entry':
+  'cmd-up': 'clojure-party-repl:showOlderHistory'
+  'cmd-down': 'clojure-party-repl:showNewerHistory'
+
+
+# Linux keybindings:
+'.platform-linux atom-workspace atom-text-editor:not([mini])':
+  'ctrl-alt-o': 'clojure-party-repl:startLocalRepl'
+  'ctrl-enter': 'clojure-party-repl:sendToRepl'
+
+'.platform-linux atom-workspace atom-text-editor:not([mini]).repl-entry':
+  'ctrl-up': 'clojure-party-repl:showOlderHistory'
+  'ctrl-down': 'clojure-party-repl:showNewerHistory'

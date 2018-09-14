@@ -1,28 +1,28 @@
-(ns clojure-repl.core
+(ns clojure-party-repl.core
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [clojure.string :as string]
             [cljs.nodejs :as node]
             [cljs.core.async :refer [chan <!] :as async]
             [oops.core :refer [oget]]
-            [clojure-repl.strings :refer [output-editor-title
+            [clojure-party-repl.strings :refer [output-editor-title
                                           input-editor-title]]
-            [clojure-repl.common :as common :refer [state repls console-log
+            [clojure-party-repl.common :as common :refer [state repls console-log
                                                     show-error visible-repl?
                                                     get-project-name-from-input-editor]]
-            [clojure-repl.host :as host]
-            [clojure-repl.guest :as guest]
-            [clojure-repl.local-repl :as local-repl]
-            [clojure-repl.remote-repl :as remote-repl]
-            [clojure-repl.execution :as execution]
-            [clojure-repl.connection-panel :as panel]
-            [clojure-repl.strings :as strings]))
+            [clojure-party-repl.host :as host]
+            [clojure-party-repl.guest :as guest]
+            [clojure-party-repl.local-repl :as local-repl]
+            [clojure-party-repl.remote-repl :as remote-repl]
+            [clojure-party-repl.execution :as execution]
+            [clojure-party-repl.connection-panel :as panel]
+            [clojure-party-repl.strings :as strings]))
 
 (def commands (.-commands js/atom))
 
 (defn start-local-repl
   "Exported plugin command. Starts new processes to run the repl."
   []
-  (console-log "clojure-repl is whipping up a new local repl!")
+  (console-log "clojure-party-repl is whipping up a new local repl!")
   (if-let [project-path (common/get-project-path)]
     (let [project-name (common/get-project-name-from-path project-path)]
       (if (get-in @repls [project-name :connection])
@@ -36,7 +36,7 @@
 (defn connect-to-nrepl
   "Exported plugin command. Connects to an existing nrepl by host and port."
   [event]
-  (console-log "clojure-repl on the case!")
+  (console-log "clojure-party-repl on the case!")
   (go
     (when-let [{:keys [host port project-name]} (<! (panel/prompt-connection-panel strings/nrepl-connection-message))]
       (if (get-in @repls [project-name :connection])
@@ -102,11 +102,11 @@
   []
   (swap! state update :disposables
          concat
-         [(.add commands "atom-workspace" "clojure-repl:startLocalRepl" start-local-repl)
-          (.add commands "atom-workspace" "clojure-repl:connectToNrepl" connect-to-nrepl)
-          (.add commands "atom-workspace" "clojure-repl:sendToRepl" send-to-repl)
-          (.add commands "atom-text-editor.repl-entry" "clojure-repl:showNewerHistory" show-newer-repl-history)
-          (.add commands "atom-text-editor.repl-entry" "clojure-repl:showOlderHistory" show-older-repl-history)]))
+         [(.add commands "atom-workspace" "clojure-party-repl:startLocalRepl" start-local-repl)
+          (.add commands "atom-workspace" "clojure-party-repl:connectToNrepl" connect-to-nrepl)
+          (.add commands "atom-workspace" "clojure-party-repl:sendToRepl" send-to-repl)
+          (.add commands "atom-text-editor.repl-entry" "clojure-party-repl:showNewerHistory" show-newer-repl-history)
+          (.add commands "atom-text-editor.repl-entry" "clojure-party-repl:showOlderHistory" show-older-repl-history)]))
 
 (defn consume-autosave
   "Consumes the Services API provided by Atom's autosave package to prevent
@@ -129,7 +129,7 @@
   "Initializes the plugin, called automatically by Atom, during startup or if
   the plugin was just installed or re-enabled."
   []
-  (console-log "Activating clojure-repl...")
+  (console-log "Activating clojure-party-repl...")
   (add-commands)
   (panel/create-connection-panel)
   (guest/look-for-teletyped-repls))
@@ -138,7 +138,7 @@
   "Shuts down the plugin, called automatically by Atom if the plugin is
   disabled or uninstalled."
   []
-  (console-log "Deactivating clojure-repl...")
+  (console-log "Deactivating clojure-party-repl...")
   (dispose-repls)
   (reset! repls {})
   (doseq [disposable (get @state :disposables)]

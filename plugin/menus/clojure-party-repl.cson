@@ -2,26 +2,26 @@
   'atom-text-editor': [
     {
       'label': 'Execute Code with Party REPL'
-      'command': 'clojure-repl:sendToRepl'
+      'command': 'clojure-party-repl:sendToRepl'
     }
   ]
 'menu': [
   {
     'label': 'Packages'
     'submenu': [
-      'label': 'Clojure Repl'
+      'label': 'Clojure Party Repl'
       'submenu': [
         {
           'label': 'Start Local REPL'
-          'command': 'clojure-repl:startLocalRepl'
+          'command': 'clojure-party-repl:startLocalRepl'
         },
         {
           'label': 'Connect to Remote nREPL Server'
-          'command': 'clojure-repl:connectToNrepl'
+          'command': 'clojure-party-repl:connectToNrepl'
         },
         {
           'label': 'Execute Code'
-          'command': 'clojure-repl:sendToRepl'
+          'command': 'clojure-party-repl:sendToRepl'
         }
       ]
     ]
