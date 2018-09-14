@@ -297,5 +297,6 @@ all the child processes created by the lein process.")
                               :session session))
                (repl/update-most-recent-repl project-name)
                (handle-messages project-name connection)
+               (repl/remove-placeholder-text project-name)
                (when-let [init-code (get-in @repls [project-name :init-code])]
                  (repl/execute-code project-name init-code))))))

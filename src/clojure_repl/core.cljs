@@ -4,6 +4,8 @@
             [cljs.nodejs :as node]
             [cljs.core.async :refer [chan <!] :as async]
             [oops.core :refer [oget]]
+            [clojure-repl.strings :refer [output-editor-title
+                                          input-editor-title]]
             [clojure-repl.common :as common :refer [state repls console-log
                                                     show-error visible-repl?
                                                     get-project-name-from-input-editor]]
@@ -114,7 +116,7 @@
   (let [dont-save-if (oget info "dontSaveIf")]
     (dont-save-if (fn [pane-item]
                     (some #(string/includes? (.getPath pane-item) %1)
-                          [common/output-editor-title common/input-editor-title])))))
+                          [output-editor-title input-editor-title])))))
 
 (defn ^:private dispose-repls
   "Disposes all the existing guest and host REPLs."

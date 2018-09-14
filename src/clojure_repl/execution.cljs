@@ -2,8 +2,8 @@
   (:require [clojure.string :as string]
             [cljs.nodejs :as node]
             [clojure-repl.repl :as repl]
-            [clojure-repl.common :as common :refer [execute-comment
-                                                    append-to-editor
+            [clojure-repl.strings :refer [execute-comment]]
+            [clojure-repl.common :as common :refer [append-to-editor
                                                     console-log
                                                     show-error
                                                     repls

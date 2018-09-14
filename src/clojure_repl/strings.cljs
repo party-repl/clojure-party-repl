@@ -5,3 +5,8 @@
 (def connection-panel-host "Host")
 (def connection-panel-port "Port")
 (def connection-panel-project "Project Name")
+
+(def output-editor-title "Clojure REPL History")
+(def input-editor-title "Clojure REPL Entry")
+(def execute-comment ";execute")
+(def output-editor-placeholder "Please wait for REPL to connect...")

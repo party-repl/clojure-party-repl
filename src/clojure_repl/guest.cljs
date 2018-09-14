@@ -1,9 +1,9 @@
 (ns clojure-repl.guest
   (:require [clojure.string :as string :refer [starts-with? index-of]]
-            [clojure-repl.common :as common :refer [output-editor-title
-                                                    input-editor-title
-                                                    execute-comment
-                                                    add-subscription
+            [clojure-repl.strings :refer [output-editor-title
+                                          input-editor-title
+                                          execute-comment]]
+            [clojure-repl.common :as common :refer [add-subscription
                                                     destroy-editor
                                                     dispose-project-if-empty
                                                     add-repl
@@ -11,12 +11,6 @@
                                                     state
                                                     console-log
                                                     show-error]]))
-
-;; TODO: Fix the problem of attaching more than one subscription on
-;;       the workspace inside `look-for-teletyped-repls`. When textEditors get
-;;       disposed, the subscription doesn't seem to get cleaned up right.
-;;       In the Atom's Console, the number of "Guest Repl? " getting printed out
-;;       over time as hot code reload happens.
 
 (defn find-project-name-from-title [editor subtitle]
   (let [title (.getTitle editor)

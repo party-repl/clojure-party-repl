@@ -2,10 +2,11 @@
   (:require [clojure.string :as string :refer [ends-with? trim trim-newline replace]]
             [clojure-repl.repl :as repl]
             [clojure-repl.execution :as execution]
-            [clojure-repl.common :as common :refer [output-editor-title
-                                                    input-editor-title
-                                                    execute-comment
-                                                    add-subscription
+            [clojure-repl.strings :refer [output-editor-title
+                                          input-editor-title
+                                          execute-comment
+                                          output-editor-placeholder]]
+            [clojure-repl.common :as common :refer [add-subscription
                                                     destroy-editor
                                                     dispose-project-if-empty
                                                     repls]]))
@@ -42,6 +43,7 @@
                 (set-grammar editor)
                 (.moveToBottom editor)
                 (swap! repls update project-name #(assoc % :host-output-editor editor))
+                (.setPlaceholderText editor output-editor-placeholder)
                 (add-subscription project-name
                                   (.onDidDestroy editor (fn [event]
                                                           (swap! repls update project-name #(assoc % :host-output-editor nil))

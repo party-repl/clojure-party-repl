@@ -7,10 +7,6 @@
 (def fs (node/require "fs"))
 (def CompositeDisposable (.-CompositeDisposable node-atom))
 
-(def output-editor-title "Clojure REPL History")
-(def input-editor-title "Clojure REPL Entry")
-(def execute-comment ";execute")
-
 (def max-history-count 100)
 
 ;; A map with project-name to TextEditor
@@ -42,12 +38,18 @@
          :lein-path "/usr/local/bin" ;; TODO: Read this from Settings
          :most-recent-repl-project-name nil}))
 
-; TODO: Only output when in dev mode?
+;; NOTE: When this is true, all output will be printed to the Console . In order
+;; to turn this on, change it to true through the ClojureScript REPL for
+;; the plugin.
+(def in-dev-mode? (atom false))
+
+;; TODO: Add a :force-print true arg? to output even in development mode
 (defn console-log
   "Used for development. The output can be viewed in the Atom's Console when in
   Dev Mode."
   [& output]
-  (apply (.-log js/console) output))
+  (when (true? @in-dev-mode?)
+    (apply (.-log js/console) output)))
 
 (defn show-error [& error]
   (apply (.-error js/console) error)

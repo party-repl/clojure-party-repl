@@ -14,6 +14,10 @@
 (defn update-most-recent-repl [project-name]
   (swap! state assoc :most-recent-repl-project-name project-name))
 
+(defn remove-placeholder-text [project-name]
+  (when-let [output-editor (get-in @repls [project-name :host-output-editor])]
+    (.setPlaceholderText output-editor "")))
+
 (defn append-to-output-editor
   "Appends text at the end of the output editor."
   [project-name output & {:keys [add-newline?] :or {add-newline? true}}]
