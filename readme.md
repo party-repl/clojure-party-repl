@@ -56,10 +56,7 @@ shadow-cljs release app
 The first time you run shadow-cljs it will ask you to install stuff into the
 project directory. This is ok, it's all blocked by `.gitignore`.
 
-After running this you should see compiled JS dropped into the standard `lib` folder
-inside the `plugin/` directory. The `plugin/` directory is ultimately what gets
-published to Atom. The `lib/` folder is not under version control since it's
-a byproduct of the build process.
+After running this you should see compiled JS dropped into the standard `lib` folder.
 
 When using the shadow-cljs' `watch` mode, most changes will be automatically
 reloaded such as changes to ClojureScript functions and vars, however changes to menus and
@@ -67,7 +64,7 @@ things on Atom's side will still require a refresh with View -> Developer -> Rel
 
 
 ### Linking the plugin to Atom
-After you compiled the plugin, go into the `plugin/` folder and run:
+After you compiled the plugin, run:
 
 ```
 apm install
@@ -75,8 +72,7 @@ apm link
 ```
 
 Next, restart Atom so it will notice the newly linked package. We just created a symlink
-from `~/.atom/packages/clojure-party-repl` to your project path (this is why you must be
-inside the `plugin/` directory when creating the link).
+from `~/.atom/packages/clojure-party-repl` to your project path.
 
 After restarting Atom, you should see the clojure-party-repl plugin installed and be able to use it.
 

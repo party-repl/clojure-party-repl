@@ -10,6 +10,6 @@
                           :showNewerHistory clojure-party-repl.core/show-newer-repl-history
                           :showOlderHistory clojure-party-repl.core/show-older-repl-history
                           :consumeAutosave clojure-party-repl.core/consume-autosave}
-                :output-to "plugin/lib/clojure-party-repl.js"
+                :output-to "lib/clojure-party-repl.js"
                 :devtools {:before-load clojure-party-repl.core/stop
                            :after-load clojure-party-repl.core/start}}}}

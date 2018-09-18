@@ -2,10 +2,9 @@
 .DS_Store
 pom.xml
 *.jar
-plugin/lib/cljs-runtime
-plugin/node_modules
-/classes/
-/out/
+/lib/cljs-runtime
+classes/
+out/
 /target/
 .lein-deps-sum
 .lein-repl-history
@@ -14,5 +13,4 @@ plugin/node_modules
 .repl
 .nrepl-*
 node_modules
-/package.json
 /package-lock.json
