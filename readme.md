@@ -2,15 +2,38 @@
 
 Clojure REPL for Atom written in ClojureScript with full Teletype support for pair programming. Let's party! 😄
 
-![Screenshot](readme.png)
-
-
-## Wet Paint
-This project is beta quality, almost ready to be published to Atom's Package manager. If you want to start using it now though, follow the [development instructions](#development).
+![Screenshot](screenshot.png)
 
 
 ## How to use this
-TODO
+Open or add your project folder inside Atom, and follow one of the methods below:
+
+Start a local nREPL with Leiningen:
+1. Open a file in the project folder, and focus on the file so it has a blinking cursor.
+2. Go to Atom's menu bar and select Packages -> Clojure Party Repl -> Start Local REPL
+3. Make sure `lein` command is available and there's `project.clj` in the root directory.
+
+Connect to a remote nREPL server:
+1. Have a running nREPL ready to be connected.
+2. Go to Atom's menu bar and select Packages -> Clojure Party Repl -> Connect to Remote nREPL server
+3. Fill out the pop out panel and hit an Enter key to connect.
+
+Once it's connected to the REPL, there should be two new tabs called `Clojure Party REPL History` and `Clojure Party REPL Entry`. The History tab shows all the output from the REPL, and the Entry tab is where you can type in code to send over to the REPL.
+
+When you're done with the REPL, simply close the tab and the REPL will be disconnected.
+
+
+Send code to a REPL using the following methods:
+- Type in the code you want to send over to the REPL inside the Entry tab and hit Command-Enter keys.
+- Move a cursor in any part of the code in a file inside a project and hit Command-Enter keys.
+- Select code in a file that's inside a project and hit Command-Enter keys.
+- Send code from an unsaved/untitled file and hit Command-Enter keys.
+
+If Command-Enter keys aren't working, other packages' keybindings could be conflicting with Party Repl's. Check if your keybindings for Atom is working right. Go to Atom -> Keymap... to open `keymap.cson` and follow the instructions.
+
+
+Pair programming with REPLs
+Install teletype and share both `Clojure Party REPL History` and `Clojure Party REPL Entry` tabs. That's it, and now everybody shares the state of the running project!
 
 
 ## How it works
