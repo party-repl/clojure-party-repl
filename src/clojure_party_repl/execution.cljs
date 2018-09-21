@@ -169,7 +169,7 @@
       a) Execute top level form if there's no selection on the editor
       b) Execute selected text if there's selection"
   []
-  (let [editor (.getActiveTextEditor (.-workspace js/atom))]
+  (when-let [editor (.getActiveTextEditor (.-workspace js/atom))]
     (if-let [project-name (common/get-project-name-from-input-editor editor)]
       (cond
         (= editor (get-in @repls [project-name :guest-input-editor])) (prepare-to-execute editor)

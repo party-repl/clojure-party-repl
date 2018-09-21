@@ -85,16 +85,17 @@
 ;;       project folder that's opened in Atom is an independent project. It
 ;;       should, however, allow user to open one big folder that contains
 ;;       multiple projects.
-(defn get-project-path
+(defn ^:private get-project-path
   "Returns the project path of the given editor or the active editor."
   ([]
    (get-project-path (.getActiveTextEditor (.-workspace js/atom))))
   ([text-editor]
-   (let [path (.getPath (.getBuffer text-editor))
+   (when text-editor
+     (let [path (.getPath (.getBuffer text-editor))
          [directory-path, relative-path] (.relativizePath (.-project js/atom) path)]
      (when directory-path
        (console-log "----Project---->" directory-path " - " relative-path)
-       (get-project-directory-from-path directory-path relative-path)))))
+       (get-project-directory-from-path directory-path relative-path))))))
 
 (defn get-project-name-from-path
   "Returns the project name from the given path."

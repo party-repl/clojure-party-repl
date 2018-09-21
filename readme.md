@@ -23,8 +23,8 @@ Once it's connected to the REPL, there should be two new tabs called `Clojure Pa
 When you're done with the REPL, simply close the tab and the REPL will be disconnected.
 
 
-Send code to a REPL using the following methods:
-- Type in the code you want to send over to the REPL inside the Entry tab and hit Command-Enter keys.
+Execute code in REPL using the following methods:
+- Type in code inside the `Clojure Party REPL Entry` tab and hit Command-Enter keys.
 - Move a cursor in any part of the code in a file inside a project and hit Command-Enter keys.
 - Select code in a file that's inside a project and hit Command-Enter keys.
 - Send code from an unsaved/untitled file and hit Command-Enter keys.
@@ -32,7 +32,7 @@ Send code to a REPL using the following methods:
 If Command-Enter keys aren't working, other packages' keybindings could be conflicting with Party Repl's. Check if your keybindings for Atom is working right. Go to Atom -> Keymap... to open `keymap.cson` and follow the instructions.
 
 
-Pair programming with REPLs
+## Pair programming with shared REPLs
 Install teletype and share both `Clojure Party REPL History` and `Clojure Party REPL Entry` tabs. That's it, and now everybody shares the state of the running project!
 
 
