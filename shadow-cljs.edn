@@ -4,7 +4,7 @@
  :builds {:app {:target :node-library
                 :exports {:activate clojure-party-repl.core/activate
                           :deactivate clojure-party-repl.core/deactivate
-                          :connectToNrepl clojure-party-repl.core/connect-to-nrepl
+                          :connectToRemoteRepl clojure-party-repl.core/connect-to-nrepl
                           :startLocalRepl clojure-party-repl.core/start-local-repl
                           :sendToRepl clojure-party-repl.core/send-to-repl
                           :showNewerHistory clojure-party-repl.core/show-newer-repl-history

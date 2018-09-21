@@ -17,7 +17,7 @@
         },
         {
           'label': 'Connect to Remote nREPL Server'
-          'command': 'clojure-party-repl:connectToNrepl'
+          'command': 'clojure-party-repl:connectToRemoteRepl'
         },
         {
           'label': 'Execute Code'

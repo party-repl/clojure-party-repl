@@ -31,7 +31,7 @@
           (common/add-repl project-name)
           (host/create-editors project-name)
           (local-repl/start-local-repl project-path))))
-    (show-error "Current file is not located inside one of projects")))
+    (show-error "Cannot start a REPL. Current file is not located inside a project directory")))
 
 (defn connect-to-nrepl
   "Exported plugin command. Connects to an existing nrepl by host and port."
@@ -103,7 +103,7 @@
   (swap! state update :disposables
          concat
          [(.add commands "atom-workspace" "clojure-party-repl:startLocalRepl" start-local-repl)
-          (.add commands "atom-workspace" "clojure-party-repl:connectToNrepl" connect-to-nrepl)
+          (.add commands "atom-workspace" "clojure-party-repl:connectToRemoteRepl" connect-to-nrepl)
           (.add commands "atom-workspace" "clojure-party-repl:sendToRepl" send-to-repl)
           (.add commands "atom-text-editor.repl-entry" "clojure-party-repl:showNewerHistory" show-newer-repl-history)
           (.add commands "atom-text-editor.repl-entry" "clojure-party-repl:showOlderHistory" show-older-repl-history)]))

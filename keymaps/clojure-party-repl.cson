@@ -1,6 +1,7 @@
 # macOS keybindings:
 '.platform-darwin atom-workspace atom-text-editor:not([mini])':
-  'ctrl-alt-o': 'clojure-party-repl:startLocalRepl'
+  'ctrl-alt-l': 'clojure-party-repl:startLocalRepl'
+  'ctrl-alt-r': 'clojure-party-repl:connectToRemoteRepl'
   'cmd-enter': 'clojure-party-repl:sendToRepl'
 
 '.platform-darwin atom-workspace atom-text-editor:not([mini]).repl-entry':
@@ -10,7 +11,8 @@
 
 # Linux keybindings:
 '.platform-linux atom-workspace atom-text-editor:not([mini])':
-  'ctrl-alt-o': 'clojure-party-repl:startLocalRepl'
+  'ctrl-alt-l': 'clojure-party-repl:startLocalRepl'
+  'ctrl-alt-r': 'clojure-party-repl:connectToRemoteRepl'
   'ctrl-enter': 'clojure-party-repl:sendToRepl'
 
 '.platform-linux atom-workspace atom-text-editor:not([mini]).repl-entry':
