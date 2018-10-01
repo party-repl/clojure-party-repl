@@ -1,16 +1,16 @@
 (ns clojure-party-repl.guest
   (:require [clojure.string :as string :refer [starts-with? index-of]]
             [clojure-party-repl.strings :refer [output-editor-title
-                                          input-editor-title
-                                          execute-comment]]
+                                                input-editor-title
+                                                execute-comment]]
             [clojure-party-repl.common :as common :refer [add-subscription
-                                                    destroy-editor
-                                                    dispose-project-if-empty
-                                                    add-repl
-                                                    repls
-                                                    state
-                                                    console-log
-                                                    show-error]]))
+                                                          destroy-editor
+                                                          dispose-project-if-empty
+                                                          add-repl
+                                                          repls
+                                                          state
+                                                          console-log
+                                                          show-error]]))
 
 (defn find-project-name-from-title [editor subtitle]
   (let [title (.getTitle editor)

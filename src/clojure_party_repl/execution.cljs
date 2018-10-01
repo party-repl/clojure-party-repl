@@ -4,10 +4,10 @@
             [clojure-party-repl.repl :as repl]
             [clojure-party-repl.strings :refer [execute-comment]]
             [clojure-party-repl.common :as common :refer [append-to-editor
-                                                    console-log
-                                                    show-error
-                                                    repls
-                                                    visible-repl?]]
+                                                          console-log
+                                                          show-error
+                                                          repls
+                                                          visible-repl?]]
             [cljs.core.async :as async :refer [timeout <!]])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 

@@ -2,7 +2,8 @@
  :lein true
  :nrepl {:port 5555}
  :builds {:app {:target :node-library
-                :exports {:activate clojure-party-repl.core/activate
+                :exports {:config clojure-party-repl.core/config
+                          :activate clojure-party-repl.core/activate
                           :deactivate clojure-party-repl.core/deactivate
                           :connectToRemoteRepl clojure-party-repl.core/connect-to-nrepl
                           :startLocalRepl clojure-party-repl.core/start-local-repl

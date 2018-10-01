@@ -19,6 +19,8 @@
 
 (def commands (.-commands js/atom))
 
+(def ^:private package-namespace "clojure-party-repl")
+
 (defn start-local-repl
   "Exported plugin command. Starts new processes to run the repl."
   []
@@ -31,7 +33,7 @@
           (common/add-repl project-name)
           (host/create-editors project-name)
           (local-repl/start-local-repl project-path))))
-    (show-error "Cannot start a REPL. Current file is not located inside a project directory")))
+    (show-error "Cannot start a REPL. Current file is not located inside a project directory or the project directory doesn't have project.clj file.")))
 
 (defn connect-to-nrepl
   "Exported plugin command. Connects to an existing nrepl by host and port."
@@ -100,13 +102,34 @@
   "Exports commands and makes them available in Atom. Exported commands also
   need to be added to shadow-cljs.edn."
   []
-  (swap! state update :disposables
-         concat
-         [(.add commands "atom-workspace" "clojure-party-repl:startLocalRepl" start-local-repl)
-          (.add commands "atom-workspace" "clojure-party-repl:connectToRemoteRepl" connect-to-nrepl)
-          (.add commands "atom-workspace" "clojure-party-repl:sendToRepl" send-to-repl)
-          (.add commands "atom-text-editor.repl-entry" "clojure-party-repl:showNewerHistory" show-newer-repl-history)
-          (.add commands "atom-text-editor.repl-entry" "clojure-party-repl:showOlderHistory" show-older-repl-history)]))
+  (swap! state update :disposables concat
+    [(.add commands "atom-workspace" (str package-namespace ":startLocalRepl") start-local-repl)
+     (.add commands "atom-workspace" (str package-namespace ":connectToRemoteRepl") connect-to-nrepl)
+     (.add commands "atom-workspace" (str package-namespace ":sendToRepl") send-to-repl)
+     (.add commands "atom-text-editor.repl-entry" (str package-namespace ":showNewerHistory") show-newer-repl-history)
+     (.add commands "atom-text-editor.repl-entry" (str package-namespace ":showOlderHistory") show-older-repl-history)]))
+
+(defn ^:private observe-setting
+  [name callback]
+  (.observe (.-config js/atom) name callback))
+
+(defn ^:private observe-settings-changes
+  []
+  (swap! state update :disposables concat
+    [(observe-setting (str package-namespace ".lein-path") #(cond
+                                                              (= % "")
+                                                                (swap! state assoc :lein-path "")
+                                                              (string/ends-with? % "/")
+                                                                (swap! state assoc :lein-path %)
+                                                              :else
+                                                                (swap! state assoc :lein-path (str % "/"))))]))
+
+(defn ^:private dispose-repls
+  "Disposes all the existing guest and host REPLs."
+  []
+  (doseq [project-name (keys @repls)]
+    (guest/dispose project-name)
+    (host/dispose project-name)))
 
 (defn consume-autosave
   "Consumes the Services API provided by Atom's autosave package to prevent
@@ -118,12 +141,14 @@
                     (some #(string/includes? (.getPath pane-item) %1)
                           [output-editor-title input-editor-title])))))
 
-(defn ^:private dispose-repls
-  "Disposes all the existing guest and host REPLs."
-  []
-  (doseq [project-name (keys @repls)]
-    (guest/dispose project-name)
-    (host/dispose project-name)))
+(def config
+  "Config Settings for Atom. This will be shown in the Settings section along with the Readme."
+  (clj->js
+    {:lein-path
+      {:title "Path to Leiningen"
+       :description "If your Leiningen is not placed in one of your System's $PATH, specify where your `lein` is installed."
+       :type "string"
+       :default ""}}))
 
 (defn activate
   "Initializes the plugin, called automatically by Atom, during startup or if
@@ -131,6 +156,7 @@
   []
   (console-log "Activating clojure-party-repl...")
   (add-commands)
+  (observe-settings-changes)
   (panel/create-connection-panel)
   (guest/look-for-teletyped-repls))
 

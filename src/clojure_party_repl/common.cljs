@@ -35,12 +35,12 @@
 
 (def state
   (atom {:disposables []
-         :lein-path "/usr/local/bin" ;; TODO: Read this from Settings
+         :lein-path ""
          :most-recent-repl-project-name nil}))
 
-;; NOTE: When this is true, all output will be printed to the Console . In order
-;; to turn this on, change it to true through the ClojureScript REPL for
-;; the plugin.
+;; NOTE: When this is true, all output will be printed to the Console. In order
+;; to turn this on, change it to true and recompile. You can also change it
+;; through the ClojureScript REPL for the plugin.
 (def in-dev-mode? (atom false))
 
 ;; TODO: Add a :force-print true arg? to output even in development mode
@@ -92,7 +92,7 @@
   ([text-editor]
    (when text-editor
      (let [path (.getPath (.getBuffer text-editor))
-         [directory-path, relative-path] (.relativizePath (.-project js/atom) path)]
+           [directory-path, relative-path] (.relativizePath (.-project js/atom) path)]
      (when directory-path
        (console-log "----Project---->" directory-path " - " relative-path)
        (get-project-directory-from-path directory-path relative-path))))))

@@ -280,7 +280,8 @@ all the child processes created by the lein process.")
       (.removeAllListeners lein-process)
       (.removeAllListeners (.-stdout lein-process))
       (.removeAllListeners (.-stderr lein-process))
-      (.kill process (.-pid lein-process) "SIGKILL"))
+      (when-let [pid (.-pid lein-process)]
+        (.kill process pid "SIGKILL")))
     (swap! repls update project-name #(assoc % :lein-process nil))))
 
 (defn connect-to-nrepl [project-name host port]

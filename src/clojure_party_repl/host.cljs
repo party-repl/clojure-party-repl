@@ -3,17 +3,17 @@
             [clojure-party-repl.repl :as repl]
             [clojure-party-repl.execution :as execution]
             [clojure-party-repl.strings :refer [output-editor-title
-                                          input-editor-title
-                                          execute-comment
-                                          output-editor-placeholder]]
+                                                input-editor-title
+                                                execute-comment
+                                                output-editor-placeholder]]
             [clojure-party-repl.common :as common :refer [add-subscription
-                                                    destroy-editor
-                                                    dispose-project-if-empty
-                                                    repls]]))
+                                                          destroy-editor
+                                                          dispose-project-if-empty
+                                                          repls]]))
 
 ;; TODO: Combine the output editor and input editor into a single paneItem.
 
-(defn set-grammar
+(defn ^:private set-grammar
   "Sets the grammer of the editor as Clojure."
   [editor]
   (.setGrammar editor (.grammarForScopeName (.-grammars js/atom) "source.clojure")))

@@ -1,4 +1,4 @@
-(defproject clojure-party-repl "0.1.0"
+(defproject clojure-party-repl "1.0.0"
 
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}

@@ -3,7 +3,7 @@
             [clojure.string :as string]
             [oops.core :refer [oget ocall]]
             [clojure-party-repl.common :as common :refer [repls state
-                                                    console-log]]))
+                                                          console-log]]))
 
 
 ;; TODO: Support sending multiple messages to repl
