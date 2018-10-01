@@ -63,8 +63,7 @@
                                   (show-error "Lein process error: " error))))
   (.on lein-process "close" (fn [code]
                               (console-log "Closing process... " code)
-                              (stop-process project-name)
-                              (destroy-editor project-name :host-output-editor)))
+                              (stop-process project-name)))
   (.on lein-process "exit" (fn [code signal]
                              (console-log "Exiting repl... " code " " signal)
                              (swap! repls update project-name #(assoc % :lein-process nil)))))

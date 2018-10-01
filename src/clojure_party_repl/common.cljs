@@ -41,7 +41,7 @@
 ;; NOTE: When this is true, all output will be printed to the Console. In order
 ;; to turn this on, change it to true and recompile. You can also change it
 ;; through the ClojureScript REPL for the plugin.
-(def in-dev-mode? (atom false))
+(def in-dev-mode? (atom true))
 
 ;; TODO: Add a :force-print true arg? to output even in development mode
 (defn console-log
