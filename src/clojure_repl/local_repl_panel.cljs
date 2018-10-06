@@ -1,11 +1,12 @@
-(ns clojure-repl.connection-panel
-  "Creates a model connection panel for prompting the user when connecting
-  to a remote repl."
+(ns clojure-repl.local-repl-panel
+  "Creates a model panel for prompting the user when starting a new local repl."
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [cljs.core.async :refer [chan <!] :as async]
             [clojure.string :as string]
             [clojure-repl.strings :as strings]
             [clojure-repl.common :as common]))
+
+;; TODO: Refactor and merge this with the connection-panel.
 
 (def ^:private ui-components
   "A container for holding all of the ui components, both
@@ -50,7 +51,7 @@
   [element value]
   (set! (.-color (.-style element)) value))
 
-(defn ^:private create-connection-panel-dom
+(defn ^:private create-local-repl-panel-dom
   "Builds the DOM for the modal panel and returns a map of UI components to be
   stored in the ui-components atom."
   []
@@ -58,51 +59,62 @@
         default-port ""
         container (.createElement js/document "section")
         header (doto (.createElement js/document "h4")
-                     (.setAttribute "class" "icon icon-clob"))
-        host-container (doto (.createElement js/document "div")
-                             (.setAttribute "class" "block"))
-        host-label (.createElement js/document "div")
-        host-subview (.createElement js/document "subview")
-        host-editor (doto (.createElement js/document "atom-text-editor")
-                          (.setAttribute "mini" true)
-                          (.setAttribute "placeholder-text" default-host)
-                          (.setAttribute "tabindex" -1))
-        port-container (doto (.createElement js/document "div")
-                             (.setAttribute "class" "block"))
-        port-label (.createElement js/document "div")
-        port-subview (.createElement js/document "subview")
-        port-editor (doto (.createElement js/document "atom-text-editor")
-                          (.setAttribute "mini" true)
-                          (.setAttribute "placeholder-text" default-port)
-                          (.setAttribute "tabindex" -1))
+                     (.setAttribute "class" "clojure-repl-h4"))
         project-container (doto (.createElement js/document "div")
-                                (.setAttribute "class" "block"))
-        project-label (.createElement js/document "div")
-        project-subview (.createElement js/document "subview")
+                                (.setAttribute "class" "clojure-repl-container control-group"))
+        project-label (doto (.createElement js/document "label")
+                            (.setAttribute "class" "control-label"))
+        project-title (doto (.createElement js/document "div")
+                            (.setAttribute "class" "setting-title"))
         project-select (doto (.createElement js/document "select")
                              (.setAttribute "tabindex" -1)
-                             (set-text-color "black"))]
-    (set-text host-label strings/connection-panel-host)
-    (set-text port-label strings/connection-panel-port)
-    (set-text project-label strings/connection-panel-project)
+                             (.setAttribute "class" "form-control")
+                             (set-text-color "black"))
+        repl-type-container (doto (.createElement js/document "div")
+                                  (.setAttribute "class" "clojure-repl-container control-group"))
+        repl-type-label (doto (.createElement js/document "label")
+                              (.setAttribute "class" "control-label"))
+        repl-type-title (doto (.createElement js/document "div")
+                              (.setAttribute "class" "setting-title"))
+        repl-type-select (doto (.createElement js/document "select")
+                               (.setAttribute "tabindex" -1)
+                               (.setAttribute "class" "form-control")
+                               (set-text-color "black"))
+        button-container (doto (.createElement js/document "div")
+                               (.setAttribute "class" "clojure-repl-container clojure-repl-button-container"))
+        cancel-button (doto (.createElement js/document "button")
+                            (.setAttribute "class" "btn clojure-repl-cancel-button"))
+        proceed-button (doto (.createElement js/document "button")
+                            (.setAttribute "class" "btn btn-primary clojure-repl-proceed-button"))]
+    (set-text project-title strings/local-repl-panel-project)
+    (set-text repl-type-title strings/local-repl-type-label)
+    (set-text cancel-button strings/cancel-button)
+    (set-text proceed-button strings/create-local-repl-button)
     (.appendChild container header)
-    (.appendChild container host-container)
-    (.appendChild host-container host-label)
-    (.appendChild host-container host-subview)
-    (.appendChild host-subview host-editor)
-    (.appendChild container port-container)
-    (.appendChild port-container port-label)
-    (.appendChild port-container port-subview)
-    (.appendChild port-subview port-editor)
     (.appendChild container project-container)
     (.appendChild project-container project-label)
-    (.appendChild project-container project-subview)
-    (.appendChild project-subview project-select)
+    (.appendChild project-label project-title)
+    (.appendChild project-container project-select)
+    (.appendChild container repl-type-container)
+    (.appendChild repl-type-container repl-type-label)
+    (.appendChild repl-type-label repl-type-title)
+    (.appendChild repl-type-container repl-type-select)
+    (.appendChild container button-container)
+    (.appendChild button-container cancel-button)
+    (.appendChild button-container proceed-button)
     {:container container
      :header header
-     :host-editor host-editor
-     :port-editor port-editor
-     :project-select project-select}))
+     :repl-type-select repl-type-select
+     :project-select project-select
+     :cancel-button cancel-button
+     :proceed-button proceed-button}))
+
+(defn ^:private update-repl-type-select
+  [repl-type-select]
+  (set! (.-innerHTML repl-type-select) "") ; The most performant method for removing all children
+  (.appendChild repl-type-select (doto (.createElement js/document "option")
+                                       (.setAttribute "value" "lein")
+                                       (set-text strings/leiningen-name))))
 
 (defn ^:private update-project-select
   "Clears all of the children from the project-select dropdown and fills it with
@@ -120,18 +132,17 @@
         (.appendChild project-select option)))))
 
 ;; TODO: Check for duplicate project names and raise an error
-(defn ^:private add-connection-panel-commands
+(defn ^:private add-local-repl-panel-commands
   "Adds Atom commands to listen to the enter and escape keys.
 
   When enter is pressed, reads the host and port values and
   writes them to the async channel for the caller to get."
   [components]
-  (let [{:keys [panel container host-editor port-editor project-select]} components
+  (let [{:keys [panel container repl-type-select project-select]} components
         confirm (fn [event]
                   (.hide panel)
                   (async/put! address-channel
-                              {:host (get-text host-editor)
-                               :port (int (get-text port-editor))
+                              {:repl-type (get-option-value repl-type-select)
                                :project-name (get-option-value project-select)}))
         cancel (fn [event]
                  (.hide panel)
@@ -141,60 +152,40 @@
     (-> (.-commands js/atom)
         (.add container "core:cancel" cancel))))
 
-(defn ^:private add-connection-panel-tab-listeners
-  "Adds a keydown listener to intercept Atom's default behavior
-  and switch between the inputs. Since there are only two
-  inputs, we don't need to worry about behavior for shift-tab
-  since it's identical.
-
-  An altenative way to implement this (how the find-and-replace package
-  does it), would be to export new functions and create a keymap with a
-  selector which specifically targets these inputs."
+(defn ^:private add-local-repl-panel-listeners
   [components]
-  (let [{:keys [host-editor port-editor]} components
-        keydown (fn [event]
-                  (when (= (.-key event) "Tab")
-                    (if (.hasFocus host-editor)
-                      (.focus port-editor)
-                      (.focus host-editor))
-                    (.stopPropagation event)
-                    (.preventDefault event)))]
-    (.addEventListener host-editor "keydown" keydown)
-    (.addEventListener port-editor "keydown" keydown)))
+  (let [{:keys [cancel-button proceed-button]} components]
+    (.addEventListener cancel-button "click" (fn [] (println "Hey")))
+    (.addEventListener proceed-button "click" (fn [] (println "Ho")))))
 
-(defn create-connection-panel
-  "Creates the connection panel and leaves it hidden until
-  the user is prompted."
+(defn create-local-repl-panel
+  "Creates the panel and leaves it hidden until the user is prompted."
   []
-  (let [{:keys [container] :as components} (create-connection-panel-dom)
+  (let [{:keys [container] :as components} (create-local-repl-panel-dom)
         panel (-> (.-workspace js/atom)
                   (.addModalPanel (js-obj "item" container
                                           "visible" false)))
         components (assoc components :panel panel)]
-    (add-connection-panel-commands components)
-    (add-connection-panel-tab-listeners components)
+    (add-local-repl-panel-commands components)
+    (add-local-repl-panel-listeners components)
     (reset! ui-components components)))
 
-;; TODO: Read the port from a .nrepl-port file in the current project if it exists
-(defn prompt-connection-panel
-  "Interupts the user with a modal connection panel asking for
-  a socket address to connect to, returning the result through
-  an async channel.
+(defn prompt-local-repl-panel
+  "Interupts the user with a modal panel, returning the result through an async
+  channel.
 
   Returns false if the user cancels the prompt."
   [message]
-  (let [{:keys [panel header host-editor
-                port-editor project-select]} @ui-components]
+  (let [{:keys [panel header repl-type-select project-select proceed-button]} @ui-components]
     (go
       (if-not (.-visible panel)
         (do
           (set-text header message)
-          (set-text host-editor "")
-          (set-text port-editor "")
+          (update-repl-type-select repl-type-select)
           (update-project-select project-select)
           (.show panel)
-          (.focus host-editor)
+          (.focus proceed-button)
           (<! address-channel))
         (do
-          (.focus host-editor)
+          (.focus proceed-button)
           false)))))

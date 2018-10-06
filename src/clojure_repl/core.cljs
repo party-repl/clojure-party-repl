@@ -12,6 +12,7 @@
             [clojure-repl.local-repl :as local-repl]
             [clojure-repl.remote-repl :as remote-repl]
             [clojure-repl.execution :as execution]
+            [clojure-repl.local-repl-panel :as p2]
             [clojure-repl.connection-panel :as panel]
             [clojure-repl.strings :as strings]))
 
@@ -20,15 +21,17 @@
 (defn start-local-repl
   "Exported plugin command. Starts new processes to run the repl."
   []
-  (if-let [project-path (common/get-active-project-path)]
-    (let [project-name (common/get-project-name-from-path project-path)]
-      (if (get-in @repls [project-name :connection])
-        (show-error "There's already a running REPL for the project " project-name)
-        (do
-          (common/add-repl project-name)
-          (host/create-editors project-name)
-          (local-repl/start-local-repl project-path))))
-    (show-error "Current file is not located inside one of projects")))
+  (p2/prompt-local-repl-panel strings/start-local-repl-message))
+  ; (if-let [project-path (common/get-active-project-path)]
+  ;   (let [project-name (common/get-project-name-from-path project-path)]
+  ;     (if (get-in @repls [project-name :connection])
+  ;       (show-error "There's already a running REPL for the project " project-name)
+  ;       (do
+  ;         (common/add-repl project-name)
+  ;         (host/create-editors project-name)
+  ;         (local-repl/start-local-repl project-path))))
+  ;   (show-error "Current file is not located inside one of projects")))
+
 
 (defn connect-to-nrepl
   "Exported plugin command. Connects to an existing nrepl by host and port."
@@ -128,6 +131,7 @@
   (console-log "Activating clojure-repl...")
   (add-commands)
   (panel/create-connection-panel)
+  (p2/create-local-repl-panel)
   (guest/look-for-teletyped-repls))
 
 (defn deactivate

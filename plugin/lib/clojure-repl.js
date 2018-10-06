@@ -14,7 +14,7 @@ try {require('source-map-support').install();} catch (e) {console.warn('no "sour
 
 global.CLOSURE_NO_DEPS = true;
 
-global.CLOSURE_DEFINES = {"shadow.cljs.devtools.client.env.devtools_url":"","shadow.cljs.devtools.client.env.autoload":true,"shadow.cljs.devtools.client.env.proc_id":"6088cf23-9eb3-4ea7-b611-ec3701f7a0f0","shadow.cljs.devtools.client.env.use_document_host":true,"shadow.cljs.devtools.client.env.module_format":"goog","shadow.cljs.devtools.client.env.before_load_async":null,"shadow.cljs.devtools.client.env.repl_host":"0.0.0.0","shadow.cljs.devtools.client.env.build_id":"app","goog.DEBUG":true,"cljs.core._STAR_target_STAR_":"nodejs","shadow.cljs.devtools.client.env.reload_with_state":false,"shadow.cljs.devtools.client.env.after_load":"clojure_repl.core.start","shadow.cljs.devtools.client.env.ssl":false,"shadow.cljs.devtools.client.env.before_load":"clojure_repl.core.stop","shadow.cljs.devtools.client.env.repl_port":9630,"shadow.cljs.devtools.client.env.enabled":true};
+global.CLOSURE_DEFINES = {"shadow.cljs.devtools.client.env.devtools_url":"","shadow.cljs.devtools.client.env.autoload":true,"shadow.cljs.devtools.client.env.proc_id":"f5d5a924-11d6-4ea2-9d80-6d82b011a0c9","shadow.cljs.devtools.client.env.use_document_host":true,"shadow.cljs.devtools.client.env.module_format":"goog","shadow.cljs.devtools.client.env.before_load_async":null,"shadow.cljs.devtools.client.env.repl_host":"0.0.0.0","shadow.cljs.devtools.client.env.build_id":"app","goog.DEBUG":true,"cljs.core._STAR_target_STAR_":"nodejs","shadow.cljs.devtools.client.env.reload_with_state":false,"shadow.cljs.devtools.client.env.after_load":"clojure_repl.core.start","shadow.cljs.devtools.client.env.ssl":false,"shadow.cljs.devtools.client.env.before_load":"clojure_repl.core.stop","shadow.cljs.devtools.client.env.repl_port":9630,"shadow.cljs.devtools.client.env.enabled":true};
 
 var goog = global.goog = {};
 
@@ -3077,6 +3077,7 @@ SHADOW_IMPORT("clojure_repl.nrepl.js");
 SHADOW_IMPORT("clojure_repl.local_repl.js");
 SHADOW_IMPORT("clojure_repl.remote_repl.js");
 SHADOW_IMPORT("clojure_repl.strings.js");
+SHADOW_IMPORT("clojure_repl.local_repl_panel.js");
 SHADOW_IMPORT("clojure_repl.connection_panel.js");
 SHADOW_IMPORT("clojure_repl.core.js");
 SHADOW_IMPORT("shadow.umd_helper.js");
