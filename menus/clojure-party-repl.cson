@@ -9,7 +9,7 @@
   {
     'label': 'Packages'
     'submenu': [
-      'label': 'Clojure Party Repl'
+      'label': 'Clojure Party REPL'
       'submenu': [
         {
           'label': 'Start Local REPL'
