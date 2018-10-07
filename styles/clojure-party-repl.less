@@ -24,30 +24,32 @@
 
 div.clojure-party-repl-view {
     position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
-.clojure-party-repl-view .output-editor {
-    position: absolute;
-    top: 0;
-    bottom: 10%;
-    left: 0;
-    right: 0;
-    margin-bottom: 40px;
+.clojure-party-repl-view .output-editor-container {
+    position: relative;
+    flex-grow: 5;
+    order: 1;
 }
 
 .clojure-party-repl-view .menu-container {
-    position: absolute;
-    height: 400px;
-    top: 90%;
-    left: 0;
-    right: 0;
-    margin-top: -40px;
     background: green;
+    height: 40px;
+    order: 2;
 }
 
+.clojure-party-repl-view .input-editor-container {
+    position: relative;
+    flex-grow: 1;
+    order: 3;
+}
+
+.clojure-party-repl-view .output-editor,
 .clojure-party-repl-view .input-editor {
     position: absolute;
-    top: 90%;
+    top: 0;
     bottom: 0;
     left: 0;
     right: 0;

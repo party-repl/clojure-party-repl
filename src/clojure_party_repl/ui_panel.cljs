@@ -29,21 +29,30 @@
 ;           (.appendChild menu-container)
 ;           (.appendChild input-editor-container))))
 
+; TODO: Enable resizing using flex-grow like: PaneResizeHandleElement does
 
 (defn create-dom []
-  (let [output-editor (.buildTextEditor (.-workspace js/atom)
-                                        (js-obj "autoHeight" false))
+  (let [output-editor-model (.buildTextEditor (.-workspace js/atom)
+                                              (js-obj "autoHeight" false))
+        input-editor-model (.buildTextEditor (.-workspace js/atom)
+                                             (js-obj "autoHeight" false))
+        output-editor (.-element output-editor-model)
+        input-editor (.-element input-editor-model)
+        output-editor-container (doto (.createElement js/document "div")
+                                      (.setAttribute "class" "output-editor-container")
+                                      (.appendChild output-editor))
+        input-editor-container (doto (.createElement js/document "div")
+                                     (.setAttribute "class" "input-editor-container")
+                                     (.appendChild input-editor))
         menu-container (doto (.createElement js/document "div")
-                             (.setAttribute "class" "menu-container"))
-        input-editor (.buildTextEditor (.-workspace js/atom)
-                                       (js-obj "autoHeight" false))]
-    (.setAttribute (.-element output-editor) "class" "output-editor")
-    (.setAttribute (.-element input-editor) "class" "input-editor")
+                             (.setAttribute "class" "menu-container"))]
+    (.setAttribute output-editor "class" "output-editor")
+    (.setAttribute input-editor "class" "input-editor")
     (doto (.createElement js/document "div")
           (.setAttribute "class" "clojure-party-repl-view")
-          (.appendChild (.-element output-editor))
+          (.appendChild output-editor-container)
           (.appendChild menu-container)
-          (.appendChild (.-element input-editor)))))
+          (.appendChild input-editor-container))))
 
 
   ; (let [container (doto (.createElement js/document "div")
