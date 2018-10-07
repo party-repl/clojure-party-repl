@@ -5,17 +5,18 @@
             [cljs.core.async :refer [chan <!] :as async]
             [oops.core :refer [oget]]
             [clojure-party-repl.strings :refer [output-editor-title
-                                          input-editor-title]]
+                                                input-editor-title]]
             [clojure-party-repl.common :as common :refer [state repls console-log
-                                                    show-error visible-repl?
-                                                    get-project-name-from-input-editor]]
+                                                          show-error visible-repl?
+                                                          get-project-name-from-input-editor]]
             [clojure-party-repl.host :as host]
             [clojure-party-repl.guest :as guest]
             [clojure-party-repl.local-repl :as local-repl]
             [clojure-party-repl.remote-repl :as remote-repl]
             [clojure-party-repl.execution :as execution]
             [clojure-party-repl.connection-panel :as panel]
-            [clojure-party-repl.strings :as strings]))
+            [clojure-party-repl.strings :as strings]
+            [clojure-party-repl.ui-panel :refer [make-it-on]]))
 
 (def commands (.-commands js/atom))
 
@@ -24,16 +25,17 @@
 (defn start-local-repl
   "Exported plugin command. Starts new processes to run the repl."
   []
-  (console-log "clojure-party-repl is whipping up a new local repl!")
-  (if-let [project-path (common/get-project-path)]
-    (let [project-name (common/get-project-name-from-path project-path)]
-      (if (get-in @repls [project-name :connection])
-        (show-error "There's already a running REPL for the project " project-name)
-        (do
-          (common/add-repl project-name)
-          (host/create-editors project-name)
-          (local-repl/start-local-repl project-path))))
-    (show-error "Cannot start a REPL. Current file is not located inside a project directory or the project directory doesn't have project.clj file.")))
+  (.open (.-workspace js/atom) "party-repl://stuff"))
+  ; (console-log "clojure-party-repl is whipping up a new local repl!")
+  ; (if-let [project-path (common/get-project-path)]
+  ;   (let [project-name (common/get-project-name-from-path project-path)]
+  ;     (if (get-in @repls [project-name :connection])
+  ;       (show-error "There's already a running REPL for the project " project-name)
+  ;       (do
+  ;         (common/add-repl project-name)
+  ;         (host/create-editors project-name)
+  ;         (local-repl/start-local-repl project-path))))
+  ;   (show-error "Cannot start a REPL. Current file is not located inside a project directory or the project directory doesn't have project.clj file.")))
 
 (defn connect-to-nrepl
   "Exported plugin command. Connects to an existing nrepl by host and port."
@@ -117,12 +119,9 @@
   []
   (swap! state update :disposables concat
     [(observe-setting (str package-namespace ".lein-path") #(cond
-                                                              (= % "")
-                                                                (swap! state assoc :lein-path "")
-                                                              (string/ends-with? % "/")
-                                                                (swap! state assoc :lein-path %)
-                                                              :else
-                                                                (swap! state assoc :lein-path (str % "/"))))]))
+                                                              (= % "") (swap! state assoc :lein-path "")
+                                                              (string/ends-with? % "/") (swap! state assoc :lein-path %)
+                                                              :else (swap! state assoc :lein-path (str % "/"))))]))
 
 (defn ^:private dispose-repls
   "Disposes all the existing guest and host REPLs."
@@ -150,12 +149,20 @@
        :type "string"
        :default ""}}))
 
+(defn add-open-listener []
+  (.addOpener (.-workspace js/atom)
+              (fn [uri]
+                (println "listening for" uri)
+                (when (string/starts-with? uri "party-repl://")
+                  (make-it-on uri)))))
+
 (defn activate
   "Initializes the plugin, called automatically by Atom, during startup or if
   the plugin was just installed or re-enabled."
   []
   (console-log "Activating clojure-party-repl...")
   (add-commands)
+  (add-open-listener)
   (observe-settings-changes)
   (panel/create-connection-panel)
   (guest/look-for-teletyped-repls))
