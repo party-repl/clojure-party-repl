@@ -93,9 +93,9 @@
    (when text-editor
      (let [path (.getPath (.getBuffer text-editor))
            [directory-path, relative-path] (.relativizePath (.-project js/atom) path)]
-     (when directory-path
-       (console-log "----Project---->" directory-path " - " relative-path)
-       (get-project-directory-from-path directory-path relative-path))))))
+       (when directory-path
+         (console-log "----Project---->" directory-path " - " relative-path)
+         (get-project-directory-from-path directory-path relative-path))))))
 
 (defn get-project-name-from-path
   "Returns the project name from the given path."

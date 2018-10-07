@@ -56,11 +56,13 @@
   (.on lein-process "error" (fn [error]
                               (cond
                                 (string/ends-with? (.toString error) "lein ENOENT")
-                                  (show-error error " Please change the path for Leiningen in the Settings.")
+                                (show-error error " Please change the path for Leiningen in the Settings.")
+
                                 (string/includes? (.toString error) "No such file or directory")
-                                  (show-error error " Party Repl couldn't find your Leiningen. Please specify where your `lein` command is in the Settings.")
+                                (show-error error " Party Repl couldn't find your Leiningen. Please specify where your `lein` command is in the Settings.")
+
                                 :else
-                                  (show-error "Lein process error: " error))))
+                                (show-error "Lein process error: " error))))
   (.on lein-process "close" (fn [code]
                               (console-log "Closing process... " code)
                               (stop-process project-name)))
