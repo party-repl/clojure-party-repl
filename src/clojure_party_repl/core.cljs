@@ -16,7 +16,7 @@
             [clojure-party-repl.execution :as execution]
             [clojure-party-repl.connection-panel :as panel]
             [clojure-party-repl.strings :as strings]
-            [clojure-party-repl.ui-panel :refer [make-it-on]]))
+            [clojure-party-repl.repl-view :refer [create-repl-view]]))
 
 (def commands (.-commands js/atom))
 
@@ -154,7 +154,7 @@
               (fn [uri]
                 (println "listening for" uri)
                 (when (string/starts-with? uri "party-repl://")
-                  (make-it-on uri)))))
+                  (create-repl-view uri)))))
 
 (defn activate
   "Initializes the plugin, called automatically by Atom, during startup or if
