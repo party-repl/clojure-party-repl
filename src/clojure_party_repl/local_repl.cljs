@@ -52,7 +52,7 @@
                                           (look-for-repl-info project-name data-string)
                                           (append-to-output-editor project-name data-string))))
   (.on (.-stderr lein-process) "data" (fn [data]
-                                        (append-to-output-editor project-name (str "Stderr: " (.toString data)))))
+                                        (append-to-output-editor project-name (.toString data) :add-new-line? false)))
   (.on lein-process "error" (fn [error]
                               (cond
                                 (string/ends-with? (.toString error) "lein ENOENT")

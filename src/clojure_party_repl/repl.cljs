@@ -25,6 +25,9 @@
     (common/append-to-editor output-editor output :add-newline? add-newline?)
     (console-log "OUTPUT: " project-name output)))
 
+(defn close [connection]
+  (.end (:socket-connection connection)))
+
 (defmulti stop-process
   "Kills the local repl process, if any, and disconnects from the repl server."
   (fn [project-name]

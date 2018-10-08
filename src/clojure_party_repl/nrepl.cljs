@@ -57,9 +57,6 @@
   ([connection session callback]
     (send connection {"op" "clone" "session" session} callback)))
 
-(defn close [connection]
-  (.end (:socket-connection connection)))
-
 ;; Use defmulti/defmethod on these
 ; (comment (send [])
 ;           (clone [])
@@ -270,7 +267,7 @@ all the child processes created by the lein process.")
   [project-name]
   (let [{:keys [connection lein-process]} (get @repls project-name)]
     (when connection
-      (close connection))
+      (repl/close connection))
     (when (= (repl/get-most-recent-repl) project-name)
       (bencode/reset-decode-data))
     (when (= :remote lein-process)
@@ -292,10 +289,9 @@ all the child processes created by the lein process.")
              (console-log "Connection succeeded!! " connection)
              (when session
                (swap! repls update project-name
-                      #(assoc %
-                              :repl-type :repl-type/nrepl
-                              :connection connection
-                              :session session))
+                      #(assoc % :repl-type :repl-type/nrepl
+                                :connection connection
+                                :session session))
                (repl/update-most-recent-repl project-name)
                (handle-messages project-name connection)
                (repl/remove-placeholder-text project-name)
