@@ -4,7 +4,8 @@
             [cljs.tools.reader.reader-types :refer [string-push-back-reader]]
             [clojure.string :as string]
             [oops.core :refer [oget oset! oset!+ ocall]]
-            [clojure-party-repl.common :refer [console-log repls add-repl-history]]
+            [clojure-party-repl.common :refer [console-log show-error repls
+                                               add-repl-history]]
             [clojure-party-repl.bencode :as bencode]
             [clojure-party-repl.repl :as repl]
             [cljs.core.async :as async :refer [chan timeout close! <! >! alts!]])
@@ -14,10 +15,11 @@
 (def net (node/require "net"))
 (def fs (node/require "fs"))
 
-;; TODO: Make it readable from the Atom package
-(fs.readFile (str  "/clojure-party-repl/resources/unrepl/blob.clj")
+(def atom-home-directory (oget process ["env" "ATOM_HOME"]))
+
+(fs.readFile (str atom-home-directory "/packages/clojure-party-repl/resources/unrepl/blob.clj")
    (fn [err data]
-     (when err (console-log err (ocall process "cwd")))
+     (when err (console-log err))
      (def unrepl-blob data)))
 
 (def ^:private ellipsis "...")
@@ -33,7 +35,7 @@
     2. Long string
     3. Stacktraces
 
-  Elision can either be at the end of a collection"
+  The cutoff lengths are set as defaults inside unrepl.printer."
   [coll]
   (if (and (coll? coll)
            (or (and (satisfies? PersistentArrayMap coll)
@@ -59,7 +61,8 @@
   (console-log "Noop unrepl tuple:" (pr-str tuple)))
 
 (defmethod handle-unrepl-tuple :started-eval [project-name [tag payload group-id :as tuple]]
-  (console-log "Noop unrepl tuple:" (pr-str tuple)))
+  (let [{{:keys [interrupt background]} :actions} payload]
+    (console-log "Noop unrepl tuple:" (pr-str tuple))))
 
 (defmethod handle-unrepl-tuple :eval [project-name [tag payload group-id]]
   (repl/append-to-output-editor project-name (pr-str payload) :add-newline? true))
@@ -102,8 +105,28 @@
   (repl/append-to-output-editor project-name "Unable to upgrade your REPL to Unrepl."))
 
 (defmethod handle-unrepl-tuple :unrepl/hello [project-name [tag payload]]
-  (let [{:keys [session actions]} payload]
-    (console-log "Session is: " session)))
+  (let [{:keys [session actions]} payload
+        {:keys [start-aux exit set-source :unrepl.jvm/start-side-loader]} actions
+        {:keys [connection port host]} (get @repls project-name)
+        aux-connection (net.Socket.)]
+    (console-log "Upgraded to Unrepl: " session)
+    (console-log "Available commands are: " (string/join " " [start-aux exit set-source start-side-loader]))
+    (.connect aux-connection port host
+              (fn []
+                (swap! repls update-in [project-name :connection]
+                       #(assoc % :aux-connection aux-connection))
+                (.write aux-connection (str start-aux))))
+    (.on aux-connection "data"
+         (fn [data]
+           ))
+    (.on aux-connection "error"
+         (fn [error]
+           (show-error error " Failed to make aux connection.")))
+    (.on aux-connection "close"
+         (fn [] (console-log "Aux connection closed")))))
+
+(defn read-clojure-var [v]
+  (symbol (str "#'" v)))
 
 (defn read-string [string]
   (cond
@@ -151,7 +174,7 @@
   (let [reader (string-push-back-reader (str data))]
     (loop []
       (let [msg (read {:eof ::eof
-                       :readers {'clojure/var identity
+                       :readers {'clojure/var read-clojure-var
                                  'unrepl/param identity
                                  'unrepl/ns identity
                                  'unrepl/string read-string
@@ -177,18 +200,39 @@
   (swap! repls update project-name #(assoc % :repl-type :repl-type/unrepl))
   (send (get-in @repls [project-name :connection]) unrepl-blob))
 
+(defn wrap-code
+  "This removes the need to send a separate blob to check if the namespace
+  exists or not.
+
+  TODO: Use this for nrepl too."
+  [code & [namespace]]
+  (if namespace
+    (str "(do
+            (if (clojure.core/find-ns '" namespace ")"
+              "(do
+                  (ns " namespace ")"
+                  code ")"
+              code "))")
+    code))
+
+;; TODO: Send the file/line/column info before sending the code by calling the
+;;       :set-source command given in the hello payload.
 (defmethod repl/execute-code :repl-type/unrepl
   [project-name code & [namespace resent?]]
-  (let [{:keys [connection session current-ns]} (get @repls project-name)]
+  (let [{:keys [connection session current-ns]} (get @repls project-name)
+        wrapped-code (wrap-code code namespace)]
     (repl/append-to-output-editor project-name code :add-newline? true)
     (add-repl-history project-name code)
-    (send connection (str code "\n"))))
+    (send connection (str wrapped-code "\n"))))
 
 (defmethod repl/stop-process :repl-type/unrepl
   [project-name]
-  (let [{:keys [connection lein-process]} (get @repls project-name)]
-    (when connection
-      (repl/close connection))))
+  (let [{:keys [connection lein-process]} (get @repls project-name)
+        {:keys [socket-connection aux-connection]} connection]
+    (when socket-connection
+      (.end socket-connection))
+    (when aux-connection
+      (.end aux-connection))))
 
 (defn connect-to-remote-plain-repl [project-name host port]
   (let [conn (net.Socket.)]
@@ -196,14 +240,17 @@
               (fn []
                 (swap! repls update project-name
                        #(assoc % :repl-type :repl-type/plain
-                                 :connection {:socket-connection conn}))
-                (when true ;; why wouldn't you want unrepl??
-                  (upgrade-connection-to-unrepl project-name))))
+                                 :connection {:socket-connection conn}
+                                 :host host
+                                 :port port))
+                (upgrade-connection-to-unrepl project-name)))
     (.on conn "data"
          (fn [data]
            (if (= :repl-type/unrepl (get-in @repls [project-name :repl-type]))
              (read-unrepl-stream project-name data)
              (repl/append-to-output-editor project-name (str data) :add-newline? false))))
-
+    (.on conn "error"
+         (fn [error]
+           (show-error error " Cannot connect to Socket Repl. Please make sure Socket Repl is running at port " port ".")))
     (.on conn "close"
-         (fn [] (console-log "connection closed")))))
+         (fn [] (console-log "Socket connection closed")))))

@@ -57,7 +57,7 @@
                               (cond
                                 (string/ends-with? (.toString error) "lein ENOENT")
                                   (show-error error " Please change the path for Leiningen in the Settings.")
-                                (string/includes? (.toString error) "No such file or directory")
+                                (string/includes? (.toString error) "no such file or directory")
                                   (show-error error " Party Repl couldn't find your Leiningen. Please specify where your `lein` command is in the Settings.")
                                 :else
                                   (show-error "Lein process error: " error))))
