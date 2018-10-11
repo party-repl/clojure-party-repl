@@ -13,7 +13,9 @@
 
 (def node-atom (node/require "atom"))
 
-(defn execute [project-name code & [options]]
+(defn execute
+  "Execute code with options, which could cantain :namespace, :line, :column."
+  [project-name code & [options]]
   (repl/execute-code project-name code options))
 
 (defn inside-string-or-comment?
@@ -59,14 +61,14 @@
 (defn execute-on-host-or-guest
   "Execute code on the editor that exists and is visible when there're both
   host and guest REPLs, otherwise, execute code on the editor that exists."
-  [project-name code namespace]
+  [project-name code & [options]]
   (let [find-repl (if (and (get-in @repls [project-name :host-input-editor])
                            (get-in @repls [project-name :guest-input-editor]))
                     #(and (some? (get-in @repls [%2 %1]))
                           (visible-repl? (get-in @repls [%2 %1])))
                     #(some? (get-in @repls [%2 %1])))]
     (condp find-repl project-name
-      :host-input-editor (execute project-name code namespace)
+      :host-input-editor (execute project-name code options)
       :guest-input-editor (append-to-editor (get-in @repls [project-name :guest-input-editor])
                                             (str code execute-comment)
                                             :add-newline? false)
@@ -86,11 +88,13 @@
 (defn execute-selected-text
   "Gets the selected text in the editor and sends it over to repl."
   [project-name editor]
-  (let [selected-range (.getSelectedBufferRange editor)
-        namespace (find-namespace-for-range editor selected-range)
+  (let [range (.getSelectedBufferRange editor)
+        namespace (find-namespace-for-range editor range)
         code (.getSelectedText editor)]
-    (flash-range editor selected-range)
-    (execute-on-host-or-guest project-name code namespace)))
+    (flash-range editor range)
+    (execute-on-host-or-guest project-name code {:namespace namespace
+                                                 :line (.-row (.-start range))
+                                                 :column (.-column (.-start range))})))
 
 (defn find-range-with-cursor
   "Searches for a range that cursor is located at."
@@ -136,7 +140,9 @@
       (let [namespace (find-namespace-for-range editor range)
             code (string/trim (.getTextInBufferRange editor range))]
         (flash-range editor range)
-        (execute-on-host-or-guest project-name code namespace)))))
+        (execute-on-host-or-guest project-name code {:namespace namespace
+                                                     :line (.-row (.-start range))
+                                                     :column (.-column (.-start range))})))))
 
 (defn execute-entered-text
   "Gets the text in the input editor and sends it over to repl."

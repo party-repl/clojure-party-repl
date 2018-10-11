@@ -206,7 +206,7 @@
 specified. When a namespace-not-found message is received, resend the code
 to the current namespace.")
 (defmethod repl/execute-code :repl-type/nrepl
-  [project-name code & [namespace resent?]]
+  [project-name code & [{:keys [namespace resent?]}]]
   (let [wrapped-code (wrap-to-catch-exception code)
         {:keys [connection session current-ns]} (get @repls project-name)
         options {"session" session
@@ -221,7 +221,7 @@ to the current namespace.")
           (fn [errors messages] ;; TODO: Do we need try-catch to resend code?
             (when (namespace-not-found? (last messages))
               (console-log "Resending code to the current namespace...")
-              (repl/execute-code project-name code nil true))))))
+              (repl/execute-code project-name code {:resent? true}))))))
 
 (defn ^:private output-namespace
   "Outputs the current namespace for the project onto the output editor."

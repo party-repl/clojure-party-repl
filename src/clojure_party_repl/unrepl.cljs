@@ -25,24 +25,26 @@
 (def ^:private ellipsis "...")
 (def ^:private elision-key :get)
 
-(defn ^:private has-elision?
+(defn ^:private has-elisions?
   "Elision is expressed as either `#unrepl/... nil` or
   `#unrepl/... {:get continuation-fn}` at the end of a collection. Elision allows
   us to have control over how much and when we want to show the details.
 
   There are a few places it could appear:
-    1. Lazy sequence
-    2. Long string
-    3. Stacktraces
+    1. Lazy sequence (0 1 2 3 4 5 6 7 8 9 {:get (continuation-fn :id)})
+    2. Long string [prefix {:get (continuation-fn :id)}]
+    3. Stacktraces [[], [], [], {:get (continuation-fn :id)}]
 
   The cutoff lengths are set as defaults inside unrepl.printer."
   [coll]
   (if (and (coll? coll)
            (or (and (satisfies? PersistentArrayMap coll)
                     (contains? coll elision-key))
-               (last coll)))
+               (contains? (last coll) elision-key)))
     true
     false))
+
+(declare read-unrepl-stream)
 
 (defmulti handle-unrepl-tuple
   (fn [project-name tuple]
@@ -77,8 +79,10 @@
 ;; {:ex {:cause String
 ;;       :via [{:type Exception
 ;;              :message String
-;;              :at [StackTrace, String, at, {...get}]}, ...]
-;;       :trace [[], [], ..., {...get}]}}
+;;              :at [StackTrace, String, at, {:get (continuation-fn)}]},
+;;             ...,
+;;             {:get (continuation-fn)}]
+;;       :trace [[], [], ..., {:get (continuation-fn)}]}}
 ;;  :phase :eval/}
 (defmethod handle-unrepl-tuple :exception [project-name [tag payload :as tuple]]
   (let [{:keys [ex phase]} payload
@@ -109,30 +113,39 @@
         {:keys [start-aux exit set-source :unrepl.jvm/start-side-loader]} actions
         {:keys [connection port host]} (get @repls project-name)
         aux-connection (net.Socket.)]
-    (console-log "Upgraded to Unrepl: " session)
+    (when-not (:aux-connection connection)
+      (console-log "Upgraded to Unrepl: " session)
     (console-log "Available commands are: " (string/join " " [start-aux exit set-source start-side-loader]))
     (.connect aux-connection port host
               (fn []
                 (swap! repls update-in [project-name :connection]
-                       #(assoc % :aux-connection aux-connection))
+                       #(assoc % :aux-connection aux-connection
+                                 :actions {:exit (str exit)
+                                           :set-source (str set-source)}))
                 (.write aux-connection (str start-aux))))
     (.on aux-connection "data"
          (fn [data]
-           ))
+           (console-log "Data arrived at aux connection.")
+           (read-unrepl-stream project-name data)))
     (.on aux-connection "error"
          (fn [error]
            (show-error error " Failed to make aux connection.")))
     (.on aux-connection "close"
-         (fn [] (console-log "Aux connection closed")))))
+         (fn [] (console-log "Aux connection closed"))))))
 
 (defn read-clojure-var [v]
   (symbol (str "#'" v)))
 
-(defn read-string [string]
+(defn read-string
+  "When string is too long, it's represented as a tuple containing the prefix
+  and elisions.
+
+  TODO: Show elisions with continuation."
+  [string]
   (cond
     (string? string) (identity string)
-    (coll? string) (let [[prefix elisions] string]
-                     (str prefix " " ellipsis))))
+    (vector? string) (let [[prefix elisions] string]
+                       (str prefix " " ellipsis " " elisions))))
 
 (defn read-ratio [[a b]]
   (symbol (str a "/" b)))
@@ -194,13 +207,13 @@
           (recur))))))
 
 (defn send [connection code]
-  (.write (:socket-connection connection) code))
+  (.write connection code))
 
 (defn upgrade-connection-to-unrepl [project-name]
   (swap! repls update project-name #(assoc % :repl-type :repl-type/unrepl))
-  (send (get-in @repls [project-name :connection]) unrepl-blob))
+  (send (get-in @repls [project-name :connection :socket-connection]) unrepl-blob))
 
-(defn wrap-code
+(defn wrap-code-with-namespace
   "This removes the need to send a separate blob to check if the namespace
   exists or not.
 
@@ -218,12 +231,24 @@
 ;; TODO: Send the file/line/column info before sending the code by calling the
 ;;       :set-source command given in the hello payload.
 (defmethod repl/execute-code :repl-type/unrepl
-  [project-name code & [namespace resent?]]
+  [project-name code & [{:keys [namespace line column]}]]
   (let [{:keys [connection session current-ns]} (get @repls project-name)
-        wrapped-code (wrap-code code namespace)]
+        {:keys [socket-connection aux-connection actions]} connection
+        {:keys [set-source exit]} actions
+        wrapped-code (wrap-code-with-namespace code namespace)]
     (repl/append-to-output-editor project-name code :add-newline? true)
     (add-repl-history project-name code)
-    (send connection (str wrapped-code "\n"))))
+    (console-log (string/replace set-source
+                                               #":unrepl/sourcename|:unrepl/line|:unrepl/column"
+                                               {":unrepl/sourcename" (str namespace)
+                                                ":unrepl/line" line
+                                                ":unrepl/column" column}))
+    (send aux-connection (string/replace set-source
+                                               #":unrepl/sourcename|:unrepl/line|:unrepl/column"
+                                               {":unrepl/sourcename" (str namespace)
+                                                ":unrepl/line" line
+                                                ":unrepl/column" column}))
+    (send socket-connection (str wrapped-code "\n"))))
 
 (defmethod repl/stop-process :repl-type/unrepl
   [project-name]
