@@ -69,6 +69,10 @@
 (defmethod handle-unrepl-tuple :eval [project-name [tag payload group-id]]
   (repl/append-to-output-editor project-name (pr-str payload) :add-newline? true))
 
+(defmethod handle-unrepl-tuple :bye [project-name [tag payload]]
+  (let [{:keys [reason outs actions]} payload]
+    (console-log "Bye for now because of " reason)))
+
 (defmethod handle-unrepl-tuple :out [project-name [tag payload group-id]]
   (repl/append-to-output-editor project-name payload :add-newline? false))
 
@@ -111,27 +115,12 @@
 (defmethod handle-unrepl-tuple :unrepl/hello [project-name [tag payload]]
   (let [{:keys [session actions]} payload
         {:keys [start-aux exit set-source :unrepl.jvm/start-side-loader]} actions
-        {:keys [connection port host]} (get @repls project-name)
-        aux-connection (net.Socket.)]
-    (when-not (:aux-connection connection)
-      (console-log "Upgraded to Unrepl: " session)
+        {:keys [connection port host]} (get @repls project-name)]
+    (console-log "Upgraded to Unrepl: " session)
     (console-log "Available commands are: " (string/join " " [start-aux exit set-source start-side-loader]))
-    (.connect aux-connection port host
-              (fn []
-                (swap! repls update-in [project-name :connection]
-                       #(assoc % :aux-connection aux-connection
-                                 :actions {:exit (str exit)
-                                           :set-source (str set-source)}))
-                (.write aux-connection (str start-aux))))
-    (.on aux-connection "data"
-         (fn [data]
-           (console-log "Data arrived at aux connection.")
-           (read-unrepl-stream project-name data)))
-    (.on aux-connection "error"
-         (fn [error]
-           (show-error error " Failed to make aux connection.")))
-    (.on aux-connection "close"
-         (fn [] (console-log "Aux connection closed"))))))
+    (swap! repls update-in [project-name :connection]
+           #(assoc % :actions {:exit (str exit)
+                               :set-source (str set-source)}))))
 
 (defn read-clojure-var [v]
   (symbol (str "#'" v)))
@@ -217,47 +206,36 @@
   "This removes the need to send a separate blob to check if the namespace
   exists or not.
 
-  TODO: Use this for nrepl too."
-  [code & [namespace]]
-  (if namespace
-    (str "(do
-            (if (clojure.core/find-ns '" namespace ")"
-              "(do
-                  (ns " namespace ")"
-                  code ")"
-              code "))")
-    code))
+  TODO: Use this for nrepl too?"
+  [code namespace]
+  (str "(do "
+          "(when (clojure.core/find-ns '" namespace ")"
+            "(ns " namespace "))"
+          code ")\n"))
 
-;; TODO: Send the file/line/column info before sending the code by calling the
-;;       :set-source command given in the hello payload.
 (defmethod repl/execute-code :repl-type/unrepl
   [project-name code & [{:keys [namespace line column]}]]
   (let [{:keys [connection session current-ns]} (get @repls project-name)
-        {:keys [socket-connection aux-connection actions]} connection
-        {:keys [set-source exit]} actions
-        wrapped-code (wrap-code-with-namespace code namespace)]
+        {:keys [socket-connection actions]} connection
+        {:keys [set-source exit]} actions]
     (repl/append-to-output-editor project-name code :add-newline? true)
     (add-repl-history project-name code)
-    (console-log (string/replace set-source
-                                               #":unrepl/sourcename|:unrepl/line|:unrepl/column"
-                                               {":unrepl/sourcename" (str namespace)
-                                                ":unrepl/line" line
-                                                ":unrepl/column" column}))
-    (send aux-connection (string/replace set-source
-                                               #":unrepl/sourcename|:unrepl/line|:unrepl/column"
-                                               {":unrepl/sourcename" (str namespace)
-                                                ":unrepl/line" line
-                                                ":unrepl/column" column}))
-    (send socket-connection (str wrapped-code "\n"))))
+    (when (and namespace set-source)
+      (send socket-connection (string/replace set-source
+                                              #":unrepl/sourcename|:unrepl/line|:unrepl/column"
+                                              {":unrepl/sourcename" (str "\"" namespace "\"")
+                                               ":unrepl/line" line
+                                               ":unrepl/column" column})))
+    (send socket-connection (if namespace
+                              (wrap-code-with-namespace code namespace)
+                              (str code "\n")))))
 
 (defmethod repl/stop-process :repl-type/unrepl
   [project-name]
   (let [{:keys [connection lein-process]} (get @repls project-name)
-        {:keys [socket-connection aux-connection]} connection]
+        {:keys [socket-connection]} connection]
     (when socket-connection
-      (.end socket-connection))
-    (when aux-connection
-      (.end aux-connection))))
+      (.end socket-connection))))
 
 (defn connect-to-remote-plain-repl [project-name host port]
   (let [conn (net.Socket.)]
