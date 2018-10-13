@@ -11,6 +11,7 @@
             [cljs.core.async :as async :refer [chan timeout close! <! >! alts!]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
+(def node-atom (node/require "atom"))
 (def process (node/require "process"))
 (def net (node/require "net"))
 (def fs (node/require "fs"))
@@ -22,6 +23,17 @@
      (when err (console-log err))
      (def unrepl-blob data)))
 
+;; NOTE: Should we use "...more" as ellipsis? Can we add meta data to
+;;       the text editor when we append the ellipsis? Maybe we can use a Marker
+;;       object to hold meta data. 'text' decoration allows the foreground
+;;       color or styling of text in a given range. Then add a click listener
+;;       to the Marker, so when it's clicked, send the continuation code to
+;;       retrieve the elisions.
+;;
+;;       markBufferRange(range, properties) => DisplayMarker
+;;       decorateMarker(marker, decorationProperties) => Decoration
+;;
+;;       How do we get the range of the elisions?
 (def ^:private ellipsis "...")
 (def ^:private elision-key :get)
 
@@ -44,7 +56,22 @@
     true
     false))
 
-(declare read-unrepl-stream)
+;; /\{\:get \(unrepl\.replG\_\_8723\/fetch \:([A-Za-z]*\_\_[0-9]*)\)\}/
+;; #"\{\:get \(unrepl\.replG\_\_8723\/fetch \:([A-Za-z]*\_\_[0-9]*)\)\}"
+
+(defn look-for-elisions [project-name]
+  (let [{:keys [host-output-editor]
+         {:keys [unrepl-ns]} :connection} (get @repls project-name)
+        quoted-unrepl-ns (string/escape unrepl-ns {\_ "\\_" \. "\\."})
+        regex (js/RegExp. (str "\\{\\:get \\(" quoted-unrepl-ns "\\/fetch \\:([A-Za-z]+\\_\\_[0-9]+)\\)\\}") "gm")
+        range ((.-Range node-atom) 0 ((.-Point node-atom) 5 0))]
+    (console-log "=======>" host-output-editor regex range)
+    (.scanInBufferRange host-output-editor
+                                 regex
+                                 range (fn [result]
+                                         (let [id (str (second (.-match result)))]
+                                           (console-log result)
+                                           (console-log "===>" [(.-start (.-range result)) id]))))))
 
 (defmulti handle-unrepl-tuple
   (fn [project-name tuple]
@@ -115,12 +142,14 @@
 (defmethod handle-unrepl-tuple :unrepl/hello [project-name [tag payload]]
   (let [{:keys [session actions]} payload
         {:keys [start-aux exit set-source :unrepl.jvm/start-side-loader]} actions
-        {:keys [connection port host]} (get @repls project-name)]
-    (console-log "Upgraded to Unrepl: " session)
+        {:keys [connection port host]} (get @repls project-name)
+        unrepl-ns (.-ns (first exit))]
+    (console-log "Upgraded to Unrepl: " (first exit))
     (console-log "Available commands are: " (string/join " " [start-aux exit set-source start-side-loader]))
     (swap! repls update-in [project-name :connection]
            #(assoc % :actions {:exit (str exit)
-                               :set-source (str set-source)}))))
+                               :set-source (str set-source)}
+                     :unrepl-ns unrepl-ns))))
 
 (defn read-clojure-var [v]
   (symbol (str "#'" v)))
@@ -134,7 +163,7 @@
   (cond
     (string? string) (identity string)
     (vector? string) (let [[prefix elisions] string]
-                       (str prefix " " ellipsis " " elisions))))
+                       (str prefix " " elisions))))
 
 (defn read-ratio [[a b]]
   (symbol (str a "/" b)))
