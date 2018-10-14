@@ -63,15 +63,32 @@
   (let [{:keys [host-output-editor]
          {:keys [unrepl-ns]} :connection} (get @repls project-name)
         quoted-unrepl-ns (string/escape unrepl-ns {\_ "\\_" \. "\\."})
-        regex (js/RegExp. (str "\\{\\:get \\(" quoted-unrepl-ns "\\/fetch \\:([A-Za-z]+\\_\\_[0-9]+)\\)\\}") "gm")
+        regex (js/RegExp. (str "\\{\\:get (\\(" quoted-unrepl-ns "\\/fetch \\:[A-Za-z]+\\_\\_[0-9]+\\))\\}") "gm")
         range ((.-Range node-atom) 0 ((.-Point node-atom) 5 0))]
-    (console-log "=======>" host-output-editor regex range)
     (.scanInBufferRange host-output-editor
-                                 regex
-                                 range (fn [result]
-                                         (let [id (str (second (.-match result)))]
-                                           (console-log result)
-                                           (console-log "===>" [(.-start (.-range result)) id]))))))
+                        regex
+                        range
+                        (fn [result]
+                          (let [match (.-match result)
+                                range (.-range result)
+                                replace-text (.-replace result)
+                                marker (.markBufferRange host-output-editor range (js-obj "maintainHistory" true
+                                                                                          "invalidate" "touch"))
+                                decoration (.decorateMarker host-output-editor marker (js-obj "type" "highlight"
+                                                                                              "class" "elisions"))
+                                continuation-fn (str (second match))]
+                            (.onDidChange marker (fn [event]
+                                                   (console-log "Marker changed!" event)
+                                                   (if (.-textChanged event)
+                                                     (do
+                                                       (console-log "Marker text changed!" marker)
+                                                       (oset! marker ["bufferMarker" "invalidate"] "touch"))
+                                                     (when (and (.-wasValid event)
+                                                              (not (.-isValid event)))
+                                                      (console-log "Marker touched!")
+                                                      (.destroy marker)))))
+                            (replace-text ellipsis)
+                            (swap! repls update-in [project-name :connection :elisions] #(assoc % marker continuation-fn)))))))
 
 (defmulti handle-unrepl-tuple
   (fn [project-name tuple]
@@ -149,7 +166,8 @@
     (swap! repls update-in [project-name :connection]
            #(assoc % :actions {:exit (str exit)
                                :set-source (str set-source)}
-                     :unrepl-ns unrepl-ns))))
+                     :unrepl-ns unrepl-ns
+                     :elisions {}))))
 
 (defn read-clojure-var [v]
   (symbol (str "#'" v)))
