@@ -176,7 +176,7 @@
     (.moveToBottom editor)
     (when (re-find #"^\s+$" (.getLastLine (.getBuffer editor)))
       (.moveToBeginningOfLine editor))
-    (.insertText editor text)
+    (.insertText editor text (js-obj "bypassReadOnly" true))
     (when add-newline?
       (.insertNewlineBelow editor))
     (.scrollToBottom (.-element editor))

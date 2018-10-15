@@ -25,6 +25,13 @@
     (common/append-to-editor output-editor output :add-newline? add-newline?)
     (console-log "OUTPUT: " project-name output)))
 
+(defn append-to-output-editor-at
+  "Appends text at the range inside the output editor."
+  [project-name output range & {:keys [add-newline?] :or {add-newline? true}}]
+  (when-let [output-editor (get-in @repls [project-name :host-output-editor])]
+    (.setTextInBufferRange output-editor range output (js-obj "bypassReadOnly" true))
+    (console-log "OUTPUT: " project-name output)))
+
 (defn close [connection]
   (.end (:socket-connection connection)))
 

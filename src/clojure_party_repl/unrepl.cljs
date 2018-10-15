@@ -5,7 +5,8 @@
             [clojure.string :as string]
             [oops.core :refer [oget oset! oset!+ ocall]]
             [clojure-party-repl.common :refer [console-log show-error repls
-                                               add-repl-history]]
+                                               add-repl-history
+                                               add-subscription]]
             [clojure-party-repl.bencode :as bencode]
             [clojure-party-repl.repl :as repl]
             [cljs.core.async :as async :refer [chan timeout close! <! >! alts!]])
@@ -23,18 +24,20 @@
      (when err (console-log err))
      (def unrepl-blob data)))
 
-;; NOTE: Should we use "...more" as ellipsis? Can we add meta data to
-;;       the text editor when we append the ellipsis? Maybe we can use a Marker
-;;       object to hold meta data. 'text' decoration allows the foreground
-;;       color or styling of text in a given range. Then add a click listener
-;;       to the Marker, so when it's clicked, send the continuation code to
-;;       retrieve the elisions.
+(defn send [connection code]
+  (.write connection code))
+
+;; NOTE: Can we add meta data to the text editor when we append the ellipsis?
+;;       Maybe we can use a Marker object to hold meta data. 'text' decoration
+;;       allows the foreground color or styling of text in a given range.
+;;       Then add a click listener to the Marker, so when it's clicked, send
+;;       the continuation code to retrieve the elisions.
 ;;
 ;;       markBufferRange(range, properties) => DisplayMarker
 ;;       decorateMarker(marker, decorationProperties) => Decoration
 ;;
 ;;       How do we get the range of the elisions?
-(def ^:private ellipsis "...")
+(def ^:private ellipsis "…more")
 (def ^:private elision-key :get)
 
 (defn ^:private has-elisions?
@@ -59,36 +62,61 @@
 ;; /\{\:get \(unrepl\.replG\_\_8723\/fetch \:([A-Za-z]*\_\_[0-9]*)\)\}/
 ;; #"\{\:get \(unrepl\.replG\_\_8723\/fetch \:([A-Za-z]*\_\_[0-9]*)\)\}"
 
-(defn look-for-elisions [project-name]
+;; TODO: Remove the marker from elisions once it's been retrieved.
+(defn ^:private on-elision-click [project-name event]
+  (let [cursor-position (.-newBufferPosition event)]
+    (console-log "Output editor clicked!" cursor-position)
+    (loop [elisions (get-in @repls [project-name :connection :elisions])
+           i 0]
+      (when-let [[marker continuation-fn] (first elisions)]
+        (let [range (.getBufferRange marker)]
+          (when (and (.isGreaterThanOrEqual cursor-position (.-start range))
+                     (.isLessThanOrEqual cursor-position (.-end range)))
+            (swap! repls update-in [project-name :connection] #(assoc % :pending-elision-range range))
+            (send (get-in @repls [project-name :connection :socket-connection]) (str continuation-fn "\n"))
+            (console-log "Marker clicked!" marker continuation-fn)
+            (.destroy marker))
+          (recur (next elisions) (inc i)))))))
+
+(defn ^:private add-elision-click-handler [project-name]
+  (let [output-editor (get-in @repls [project-name :host-output-editor])]
+    (add-subscription project-name
+                      (.onDidChangeCursorPosition output-editor (partial on-elision-click project-name)))))
+
+(defn ^:private look-for-elisions [project-name host-output-editor regex range]
+  (.scanInBufferRange host-output-editor
+                      regex
+                      range
+                      (fn [result]
+                        (let [match (.-match result)
+                              range (.-range result)
+                              replace-text (.-replace result)
+                              marker (.markBufferRange host-output-editor range (js-obj "maintainHistory" true
+                                                                                        "invalidate" "never"))
+                              decoration (.decorateMarker host-output-editor marker (js-obj "type" "highlight"
+                                                                                            "class" "elisions"))
+                              continuation-fn (str (second match))]
+                          (add-subscription project-name
+                                            (.onDidChange marker (fn [event]
+                                                                   (when (.-textChanged event)
+                                                                     (console-log "Marker text changed!" marker)))))
+                          (replace-text ellipsis)
+                          (swap! repls update-in [project-name :connection :elisions] #(conj % [marker continuation-fn]))))))
+
+
+(defn ^:private on-elision-append [project-name event]
   (let [{:keys [host-output-editor]
          {:keys [unrepl-ns]} :connection} (get @repls project-name)
         quoted-unrepl-ns (string/escape unrepl-ns {\_ "\\_" \. "\\."})
-        regex (js/RegExp. (str "\\{\\:get (\\(" quoted-unrepl-ns "\\/fetch \\:[A-Za-z]+\\_\\_[0-9]+\\))\\}") "gm")
-        range ((.-Range node-atom) 0 ((.-Point node-atom) 5 0))]
-    (.scanInBufferRange host-output-editor
-                        regex
-                        range
-                        (fn [result]
-                          (let [match (.-match result)
-                                range (.-range result)
-                                replace-text (.-replace result)
-                                marker (.markBufferRange host-output-editor range (js-obj "maintainHistory" true
-                                                                                          "invalidate" "touch"))
-                                decoration (.decorateMarker host-output-editor marker (js-obj "type" "highlight"
-                                                                                              "class" "elisions"))
-                                continuation-fn (str (second match))]
-                            (.onDidChange marker (fn [event]
-                                                   (console-log "Marker changed!" event)
-                                                   (if (.-textChanged event)
-                                                     (do
-                                                       (console-log "Marker text changed!" marker)
-                                                       (oset! marker ["bufferMarker" "invalidate"] "touch"))
-                                                     (when (and (.-wasValid event)
-                                                              (not (.-isValid event)))
-                                                      (console-log "Marker touched!")
-                                                      (.destroy marker)))))
-                            (replace-text ellipsis)
-                            (swap! repls update-in [project-name :connection :elisions] #(assoc % marker continuation-fn)))))))
+        regex (js/RegExp. (str "\\{\\:get (\\(" quoted-unrepl-ns "\\/fetch \\:[A-Za-z]+\\_\\_[0-9]+\\))\\}") "gm")]
+    (doseq [change (.-changes event)]
+      (when-let [new-range (.-newRange change)]
+        (look-for-elisions project-name host-output-editor regex new-range)))))
+
+(defn ^:private add-elision-append-handler [project-name]
+  (let [output-editor (get-in @repls [project-name :host-output-editor])]
+    (add-subscription project-name
+                      (.onDidStopChanging output-editor (partial on-elision-append project-name)))))
 
 (defmulti handle-unrepl-tuple
   (fn [project-name tuple]
@@ -111,7 +139,12 @@
     (console-log "Noop unrepl tuple:" (pr-str tuple))))
 
 (defmethod handle-unrepl-tuple :eval [project-name [tag payload group-id]]
-  (repl/append-to-output-editor project-name (pr-str payload) :add-newline? true))
+  (if-let [elision-range (get-in @repls [project-name :connection :pending-elision-range])]
+    (if (or (seq? payload) (vector? payload) (set? payload))
+      (repl/append-to-output-editor-at project-name (apply pr-str payload) elision-range :add-newline? false)
+      (if (coll? payload)
+        (repl/append-to-output-editor-at project-name (apply pr-str (flatten (into [] payload))) elision-range :add-newline? false)))
+    (repl/append-to-output-editor project-name (pr-str payload) :add-newline? true)))
 
 (defmethod handle-unrepl-tuple :bye [project-name [tag payload]]
   (let [{:keys [reason outs actions]} payload]
@@ -148,10 +181,12 @@
                                       :add-newline? true)))))
 
 (defmethod handle-unrepl-tuple :prompt [project-name [tag payload]]
-  (repl/append-to-output-editor project-name
-                                (str (get payload 'clojure.core/*ns*)
-                                     "> ")
-                                :add-newline? false))
+  (if-let [elision-range (get-in @repls [project-name :connection :pending-elision-range])]
+    (swap! repls update-in [project-name :connection] #(assoc % :pending-elision-range nil))
+    (repl/append-to-output-editor project-name
+                                  (str (get payload 'clojure.core/*ns*)
+                                       "> ")
+                                  :add-newline? false)))
 
 (defmethod handle-unrepl-tuple :unrepl.upgrade/failed [project-name [tag]]
   (repl/append-to-output-editor project-name "Unable to upgrade your REPL to Unrepl."))
@@ -167,7 +202,10 @@
            #(assoc % :actions {:exit (str exit)
                                :set-source (str set-source)}
                      :unrepl-ns unrepl-ns
-                     :elisions {}))))
+                     :elisions []
+                     :pending-elision-range nil))
+    (add-elision-click-handler project-name)
+    (add-elision-append-handler project-name)))
 
 (defn read-clojure-var [v]
   (symbol (str "#'" v)))
@@ -194,7 +232,7 @@
   to the :get key."
   [elisions]
   (if (nil? elisions)
-    ellipsis
+    "..." ;TODO: What should we show here as a key for the map elisions?
     (identity elisions)))
 
 (defn read-lazy-error
@@ -242,10 +280,7 @@
           (handle-unrepl-tuple project-name msg)
           (recur))))))
 
-(defn send [connection code]
-  (.write connection code))
-
-(defn upgrade-connection-to-unrepl [project-name]
+(defn ^:private upgrade-connection-to-unrepl [project-name]
   (swap! repls update project-name #(assoc % :repl-type :repl-type/unrepl))
   (send (get-in @repls [project-name :connection :socket-connection]) unrepl-blob))
 
