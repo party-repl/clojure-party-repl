@@ -27,16 +27,6 @@
 (defn send [connection code]
   (.write connection code))
 
-;; NOTE: Can we add meta data to the text editor when we append the ellipsis?
-;;       Maybe we can use a Marker object to hold meta data. 'text' decoration
-;;       allows the foreground color or styling of text in a given range.
-;;       Then add a click listener to the Marker, so when it's clicked, send
-;;       the continuation code to retrieve the elisions.
-;;
-;;       markBufferRange(range, properties) => DisplayMarker
-;;       decorateMarker(marker, decorationProperties) => Decoration
-;;
-;;       How do we get the range of the elisions?
 (def ^:private ellipsis "…more")
 (def ^:private elision-key :get)
 
@@ -49,71 +39,88 @@
     1. Lazy sequence (0 1 2 3 4 5 6 7 8 9 {:get (continuation-fn :id)})
     2. Long string [prefix {:get (continuation-fn :id)}]
     3. Stacktraces [[], [], [], {:get (continuation-fn :id)}]
+    4. Map {:a 0, :b 1, :c 2, ... {:get (continuation-fn :id)}}
 
   The cutoff lengths are set as defaults inside unrepl.printer."
   [coll]
   (if (and (coll? coll)
            (or (and (satisfies? PersistentArrayMap coll)
-                    (contains? coll elision-key))
+                    (every? elision-key (keys coll)))
                (contains? (last coll) elision-key)))
     true
     false))
 
-;; /\{\:get \(unrepl\.replG\_\_8723\/fetch \:([A-Za-z]*\_\_[0-9]*)\)\}/
-;; #"\{\:get \(unrepl\.replG\_\_8723\/fetch \:([A-Za-z]*\_\_[0-9]*)\)\}"
+(defn ^:private find-matching-marker-range
+  "Returns a marker if the cursor is positioned inside the marker."
+  [cursor-position [marker continuation-fn]]
+  (when-let [range (.getBufferRange marker)]
+    (when (and (.isGreaterThanOrEqual cursor-position (.-start range))
+               (.isLessThanOrEqual cursor-position (.-end range)))
+      (console-log "Marker clicked!" marker continuation-fn)
+      [marker continuation-fn])))
 
-;; TODO: Remove the marker from elisions once it's been retrieved.
-(defn ^:private on-elision-click [project-name event]
-  (let [cursor-position (.-newBufferPosition event)]
+(defn ^:private on-elision-click
+  "Sends the continuation function code for the corresponding elision when the
+  cursor moves inside the elision marker."
+  [project-name event]
+  (let [cursor-position (.-newBufferPosition event)
+        [clicked-marker continuation-fn] (some (partial find-matching-marker-range cursor-position)
+                                               (get-in @repls [project-name :connection :elisions]))]
     (console-log "Output editor clicked!" cursor-position)
-    (loop [elisions (get-in @repls [project-name :connection :elisions])
-           i 0]
-      (when-let [[marker continuation-fn] (first elisions)]
-        (let [range (.getBufferRange marker)]
-          (when (and (.isGreaterThanOrEqual cursor-position (.-start range))
-                     (.isLessThanOrEqual cursor-position (.-end range)))
-            (swap! repls update-in [project-name :connection] #(assoc % :pending-elision-range range))
-            (send (get-in @repls [project-name :connection :socket-connection]) (str continuation-fn "\n"))
-            (console-log "Marker clicked!" marker continuation-fn)
-            (.destroy marker))
-          (recur (next elisions) (inc i)))))))
+    (when (and clicked-marker continuation-fn)
+      (swap! repls update-in [project-name :connection] #(assoc % :pending-elision-range (.getBufferRange clicked-marker)))
+      (send (get-in @repls [project-name :connection :socket-connection]) (str continuation-fn "\n"))
+      (.destroy clicked-marker)
+      (swap! repls update-in [project-name :connection :elisions] #(dissoc % clicked-marker)))))
 
-(defn ^:private add-elision-click-handler [project-name]
+(defn ^:private add-elision-click-handler
+  "Watches the cursor position inside the output editor to trigger the elision
+  to expand."
+  [project-name]
   (let [output-editor (get-in @repls [project-name :host-output-editor])]
     (add-subscription project-name
                       (.onDidChangeCursorPosition output-editor (partial on-elision-click project-name)))))
 
-(defn ^:private look-for-elisions [project-name host-output-editor regex range]
-  (.scanInBufferRange host-output-editor
-                      regex
-                      range
-                      (fn [result]
-                        (let [match (.-match result)
-                              range (.-range result)
-                              replace-text (.-replace result)
-                              marker (.markBufferRange host-output-editor range (js-obj "maintainHistory" true
-                                                                                        "invalidate" "never"))
-                              decoration (.decorateMarker host-output-editor marker (js-obj "type" "highlight"
-                                                                                            "class" "elisions"))
-                              continuation-fn (str (second match))]
-                          (add-subscription project-name
-                                            (.onDidChange marker (fn [event]
-                                                                   (when (.-textChanged event)
-                                                                     (console-log "Marker text changed!" marker)))))
-                          (replace-text ellipsis)
-                          (swap! repls update-in [project-name :connection :elisions] #(conj % [marker continuation-fn]))))))
+(defn ^:private look-for-elisions
+  "Searches inside the range for elisions and replaces them with ellipsis. It
+  also decorates the ellipsis with markers and keeps the reference to them with
+  the continuation function.
+
+  Some examples to show output with elisions:
+    (zipmap (range) (map char (range 0 200)))
+    (flatten [0 1 2 [3 4 5 [6 7] [8 9 10]] 11 12 [13 [14 15 16] 17 18 [19]] 20])
+    (str \"Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s.\")"
+  [project-name changed-range]
+  (let [{:keys [host-output-editor] {:keys [elision-regex]} :connection} (get-in @repls [project-name])]
+    (.scanInBufferRange host-output-editor
+                        elision-regex
+                        changed-range
+                        (fn [result]
+                          (let [match (.-match result)
+                                range (.-range result)
+                                replace-text (.-replace result)
+                                marker (.markBufferRange host-output-editor range (js-obj "maintainHistory" true
+                                                                                          "invalidate" "never"))
+                                decoration (.decorateMarker host-output-editor marker (js-obj "type" "highlight"
+                                                                                              "class" "elisions"))
+                                continuation-fn (str (second match))]
+                            (replace-text ellipsis)
+                            (swap! repls update-in [project-name :connection :elisions] #(assoc % marker continuation-fn)))))))
 
 
-(defn ^:private on-elision-append [project-name event]
-  (let [{:keys [host-output-editor]
-         {:keys [unrepl-ns]} :connection} (get @repls project-name)
-        quoted-unrepl-ns (string/escape unrepl-ns {\_ "\\_" \. "\\."})
-        regex (js/RegExp. (str "\\{\\:get (\\(" quoted-unrepl-ns "\\/fetch \\:[A-Za-z]+\\_\\_[0-9]+\\))\\}") "gm")]
-    (doseq [change (.-changes event)]
-      (when-let [new-range (.-newRange change)]
-        (look-for-elisions project-name host-output-editor regex new-range)))))
+(defn ^:private on-elision-append
+  "Searches for elisions inside the appended buffer. Since the change event
+  gives us the range for each change that happened, we only need to look inside
+  the range for elisions."
+  [project-name event]
+  (doseq [change (.-changes event)]
+    (when-let [new-range (.-newRange change)]
+      (look-for-elisions project-name new-range))))
 
-(defn ^:private add-elision-append-handler [project-name]
+(defn ^:private add-elision-append-handler
+  "Watches any changes that happens to the output editor to check if any
+  elisions have been appended."
+  [project-name]
   (let [output-editor (get-in @repls [project-name :host-output-editor])]
     (add-subscription project-name
                       (.onDidStopChanging output-editor (partial on-elision-append project-name)))))
@@ -138,23 +145,32 @@
   (let [{{:keys [interrupt background]} :actions} payload]
     (console-log "Noop unrepl tuple:" (pr-str tuple))))
 
+;; TODO: Handle elision expansion for exception too.
+;; NOTE: For string payload, it adds unnecessary space from joining the string
+;;       when the prefix doesn't end with a whitespace and the expanded string
+;;       doesn't start with a whitespace.
 (defmethod handle-unrepl-tuple :eval [project-name [tag payload group-id]]
   (if-let [elision-range (get-in @repls [project-name :connection :pending-elision-range])]
     (if (or (seq? payload) (vector? payload) (set? payload))
       (repl/append-to-output-editor-at project-name (apply pr-str payload) elision-range :add-newline? false)
       (if (coll? payload)
-        (repl/append-to-output-editor-at project-name (apply pr-str (flatten (into [] payload))) elision-range :add-newline? false)))
+        (repl/append-to-output-editor-at project-name (apply pr-str (flatten (into [] payload))) elision-range :add-newline? false)
+        (when (string? payload)
+          (repl/append-to-output-editor-at project-name (if (string/starts-with? (str payload) " ")
+                                                          (subs (str payload) 1)
+                                                          (str payload))
+                                                        elision-range :add-newline? false))))
     (repl/append-to-output-editor project-name (pr-str payload) :add-newline? true)))
 
-(defmethod handle-unrepl-tuple :bye [project-name [tag payload]]
+(defmethod handle-unrepl-tuple :bye [project-name [tag payload :as tuple]]
   (let [{:keys [reason outs actions]} payload]
-    (console-log "Bye for now because of " reason)))
+    (console-log "Bye for now because of" reason)))
 
-(defmethod handle-unrepl-tuple :out [project-name [tag payload group-id]]
-  (repl/append-to-output-editor project-name payload :add-newline? false))
+(defmethod handle-unrepl-tuple :out [project-name [tag payload group-id :as tuple]]
+  (console-log "Noop unrepl tuple:" (pr-str tuple)))
 
-(defmethod handle-unrepl-tuple :err [project-name [tag payload group-id]]
-  (repl/append-to-output-editor project-name payload :add-newline? false))
+(defmethod handle-unrepl-tuple :err [project-name [tag payload group-id :as tuple]]
+  (console-log "Noop unrepl tuple:" (pr-str tuple)))
 
 ;; The exception has a shape of:
 ;; {:ex {:cause String
@@ -165,16 +181,16 @@
 ;;             {:get (continuation-fn)}]
 ;;       :trace [[], [], ..., {:get (continuation-fn)}]}}
 ;;  :phase :eval/}
-(defmethod handle-unrepl-tuple :exception [project-name [tag payload :as tuple]]
+(defmethod handle-unrepl-tuple :exception [project-name [tag payload group-id :as tuple]]
   (let [{:keys [ex phase]} payload
         {:keys [cause via trace]} ex
         [{:keys [type _ _]} _] via]
     (repl/append-to-output-editor project-name
                                   (string/join " " [type cause (-> trace
-                                                                   (get 0 [])
-                                                                   (get 2 ""))])
+                                                            (get 0 [])
+                                                            (get 2 ""))])
                                   :add-newline? true)
-    (doseq [[_ _ at] (vec (butlast (next trace)))] ;; TODO: The last item is elisions map. Show "..."?
+    (doseq [[_ _ at _] (vec (butlast (next trace)))]
       (when-not (coll? at)
         (repl/append-to-output-editor project-name
                                       (str \tab at)
@@ -196,14 +212,18 @@
         {:keys [start-aux exit set-source :unrepl.jvm/start-side-loader]} actions
         {:keys [connection port host]} (get @repls project-name)
         unrepl-ns (.-ns (first exit))]
-    (console-log "Upgraded to Unrepl: " (first exit))
+    (console-log "Upgraded to Unrepl: " session)
     (console-log "Available commands are: " (string/join " " [start-aux exit set-source start-side-loader]))
     (swap! repls update-in [project-name :connection]
            #(assoc % :actions {:exit (str exit)
                                :set-source (str set-source)}
                      :unrepl-ns unrepl-ns
-                     :elisions []
-                     :pending-elision-range nil))
+                     :unrepl-session (name session)
+                     :elisions {}
+                     :pending-elision-range nil
+                     :elision-regex (js/RegExp. (str "(?:\\{?\\.\\.\\.\\s+)?\\{\\:get\\s+(\\("
+                                                     (string/escape unrepl-ns {\_ "\\_" \. "\\."})
+                                                     "\\/fetch\\s+\\:[A-Za-z]+\\_\\_[0-9]+\\))\\}") "gm")))
     (add-elision-click-handler project-name)
     (add-elision-append-handler project-name)))
 
@@ -212,14 +232,14 @@
 
 (defn read-string
   "When string is too long, it's represented as a tuple containing the prefix
-  and elisions.
-
-  TODO: Show elisions with continuation."
+  and elisions. Elisions can be expanded by calling the continuation function."
   [string]
   (cond
     (string? string) (identity string)
     (vector? string) (let [[prefix elisions] string]
-                       (str prefix " " elisions))))
+                       (if (string/ends-with? prefix " ")
+                         (string/join "" string)
+                         (string/join " " string)))))
 
 (defn read-ratio [[a b]]
   (symbol (str a "/" b)))
@@ -232,7 +252,7 @@
   to the :get key."
   [elisions]
   (if (nil? elisions)
-    "..." ;TODO: What should we show here as a key for the map elisions?
+    (symbol (str "..."))
     (identity elisions)))
 
 (defn read-lazy-error
@@ -246,11 +266,12 @@
 
   TODO: Also show a stacktrace below the result?"
   [{:keys [cause via trace]}]
-  (let [[{:keys [type message _]} _] via]
+  (let [[{:keys [type message _]} _] via
+        first-trace (-> trace
+                        (get 0 [])
+                        (get 2 ""))]
     (apply console-log cause)
-    (string/join " " [type message (-> trace
-                                       (get 0 [])
-                                       (get 2 ""))])))
+    (identity [type message trace])))
 
 (defn ^:private read-unrepl-stream
   "Read and process all the unrepl tuples in the given data string.
@@ -302,12 +323,15 @@
         {:keys [set-source exit]} actions]
     (repl/append-to-output-editor project-name code :add-newline? true)
     (add-repl-history project-name code)
-    (when (and namespace set-source)
-      (send socket-connection (string/replace set-source
-                                              #":unrepl/sourcename|:unrepl/line|:unrepl/column"
+    (send socket-connection (string/replace set-source
+                                            #":unrepl/sourcename|:unrepl/line|:unrepl/column"
+                                            (if namespace
                                               {":unrepl/sourcename" (str "\"" namespace "\"")
                                                ":unrepl/line" line
-                                               ":unrepl/column" column})))
+                                               ":unrepl/column" column}
+                                              {":unrepl/sourcename" (str "\"" "unrepl-entry" "\"")
+                                               ":unrepl/line" 1
+                                               ":unrepl/column" 1})))
     (send socket-connection (if namespace
                               (wrap-code-with-namespace code namespace)
                               (str code "\n")))))
