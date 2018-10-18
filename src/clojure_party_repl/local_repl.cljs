@@ -30,7 +30,9 @@
     (when-let [[_ port] (re-find #"nREPL server started on port (\d+)" data-string)]
       (console-log "Port found from " data-string)
       (swap! repls update project-name #(assoc % :port port))
-      (nrepl/connect-to-nrepl project-name (get-in @repls [project-name :host]) port))))
+      (nrepl/connect-to-nrepl {:project-name project-name
+                               :host (get-in @repls [project-name :host])
+                               :port port}))))
 
 (defn ^:private look-for-ns
   "Searches for a namespace that's currently set in the repl."
@@ -45,15 +47,15 @@
 
 (defn ^:private setup-process
   "Adding callbacks to all messages that lein process recieves."
-  [project-name lein-process]
+  [project-name repl-process]
   (console-log "Setting up process...")
-  (.on (.-stdout lein-process) "data" (fn [data]
+  (.on (.-stdout repl-process) "data" (fn [data]
                                         (let [data-string (.toString data)]
                                           (look-for-repl-info project-name data-string)
-                                          (append-to-output-editor project-name data-string))))
-  (.on (.-stderr lein-process) "data" (fn [data]
-                                        (append-to-output-editor project-name (.toString data) :add-new-line? false)))
-  (.on lein-process "error" (fn [error]
+                                          (append-to-output-editor project-name data-string :add-newline? false))))
+  (.on (.-stderr repl-process) "data" (fn [data]
+                                        (append-to-output-editor project-name (.toString data) :add-newline? false)))
+  (.on repl-process "error" (fn [error]
                               (cond
                                 (string/ends-with? (.toString error) "lein ENOENT")
                                   (show-error error " Please change the path for Leiningen in the Settings.")
@@ -61,14 +63,14 @@
                                   (show-error error " Party Repl couldn't find your Leiningen. Please specify where your `lein` command is in the Settings.")
                                 :else
                                   (show-error "Lein process error: " error))))
-  (.on lein-process "close" (fn [code]
+  (.on repl-process "close" (fn [code]
                               (console-log "Closing process... " code)
                               (stop-process project-name)))
-  (.on lein-process "exit" (fn [code signal]
+  (.on repl-process "exit" (fn [code signal]
                              (console-log "Exiting repl... " code " " signal)
-                             (swap! repls update project-name #(assoc % :lein-process nil)))))
+                             (swap! repls update project-name #(assoc % :repl-process nil)))))
 
-(defn ^:private start-lein-process
+(defn ^:private start-repl-process
   "Starts a lein repl process on project-path."
   [env project-path & args]
   (console-log "Starting lein process...")
@@ -76,12 +78,12 @@
         process-env (js-obj "cwd" project-path
                             "env" (goog.object.set env "PWD" project-path))
         lein-command (str (:lein-path @state) (first lein-exec))
-        lein-process (.spawn child-process lein-command (clj->js (next lein-exec)) process-env)]
+        repl-process (.spawn child-process lein-command (clj->js (next lein-exec)) process-env)]
     (swap! repls update project-name #(assoc % :current-working-directory project-path
                                                :process-env process-env
-                                               :lein-process lein-process
+                                               :repl-process repl-process
                                                :repl-type :repl-type/nrepl))
-    (setup-process project-name lein-process)))
+    (setup-process project-name repl-process)))
 
 (defn ^:private get-env
   "Setup the environment that lein process will run in."
@@ -92,4 +94,4 @@
     env))
 
 (defn start-local-repl [project-path]
-  (start-lein-process (get-env) project-path))
+  (start-repl-process (get-env) project-path))

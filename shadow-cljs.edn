@@ -5,7 +5,7 @@
                 :exports {:config clojure-party-repl.core/config
                           :activate clojure-party-repl.core/activate
                           :deactivate clojure-party-repl.core/deactivate
-                          :connectToRemoteRepl clojure-party-repl.core/connect-to-nrepl
+                          :connectToRemoteRepl clojure-party-repl.core/connect-to-remote-repl
                           :startLocalRepl clojure-party-repl.core/start-local-repl
                           :sendToRepl clojure-party-repl.core/send-to-repl
                           :showNewerHistory clojure-party-repl.core/show-newer-repl-history

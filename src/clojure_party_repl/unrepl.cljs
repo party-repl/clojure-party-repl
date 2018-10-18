@@ -63,15 +63,16 @@
   "Sends the continuation function code for the corresponding elision when the
   cursor moves inside the elision marker."
   [project-name event]
-  (let [cursor-position (.-newBufferPosition event)
-        [clicked-marker continuation-fn] (some (partial find-matching-marker-range cursor-position)
+  (when-not (.-textChanged event)
+    (let [cursor-position (.-newBufferPosition event)
+          [clicked-marker continuation-fn] (some (partial find-matching-marker-range cursor-position)
                                                (get-in @repls [project-name :connection :elisions]))]
-    (console-log "Output editor clicked!" cursor-position)
-    (when (and clicked-marker continuation-fn)
-      (swap! repls update-in [project-name :connection] #(assoc % :pending-elision-range (.getBufferRange clicked-marker)))
-      (send (get-in @repls [project-name :connection :socket-connection]) (str continuation-fn "\n"))
-      (.destroy clicked-marker)
-      (swap! repls update-in [project-name :connection :elisions] #(dissoc % clicked-marker)))))
+      (console-log "Output editor clicked!" cursor-position)
+      (when (and clicked-marker continuation-fn)
+        (swap! repls update-in [project-name :connection] #(assoc % :pending-elision-range (.getBufferRange clicked-marker)))
+        (send (get-in @repls [project-name :connection :socket-connection]) (str continuation-fn "\n"))
+        (.destroy clicked-marker)
+        (swap! repls update-in [project-name :connection :elisions] #(dissoc % clicked-marker))))))
 
 (defn ^:private add-elision-click-handler
   "Watches the cursor position inside the output editor to trigger the elision
@@ -102,7 +103,7 @@
                                 marker (.markBufferRange host-output-editor range (js-obj "maintainHistory" true
                                                                                           "invalidate" "never"))
                                 decoration (.decorateMarker host-output-editor marker (js-obj "type" "highlight"
-                                                                                              "class" "elisions"))
+                                                                                              "class" "clojure-party-repl elisions"))
                                 continuation-fn (str (second match))]
                             (replace-text ellipsis)
                             (swap! repls update-in [project-name :connection :elisions] #(assoc % marker continuation-fn)))))))
@@ -329,7 +330,7 @@
                                               {":unrepl/sourcename" (str "\"" namespace "\"")
                                                ":unrepl/line" line
                                                ":unrepl/column" column}
-                                              {":unrepl/sourcename" (str "\"" "unrepl-entry" "\"")
+                                              {":unrepl/sourcename" (str "\"" "repl-entry" "\"")
                                                ":unrepl/line" 1
                                                ":unrepl/column" 1})))
     (send socket-connection (if namespace
@@ -338,12 +339,12 @@
 
 (defmethod repl/stop-process :repl-type/unrepl
   [project-name]
-  (let [{:keys [connection lein-process]} (get @repls project-name)
+  (let [{:keys [connection repl-process]} (get @repls project-name)
         {:keys [socket-connection]} connection]
     (when socket-connection
       (.end socket-connection))))
 
-(defn connect-to-remote-plain-repl [project-name host port]
+(defn connect-to-remote-plain-repl [{:keys [project-name host port]}]
   (let [conn (net.Socket.)]
     (.connect conn port host
               (fn []

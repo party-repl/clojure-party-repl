@@ -12,11 +12,11 @@
       'label': 'Clojure Party Repl'
       'submenu': [
         {
-          'label': 'Start Local REPL'
+          'label': 'Start Local Lein REPL'
           'command': 'clojure-party-repl:startLocalRepl'
         },
         {
-          'label': 'Connect to Remote nREPL Server'
+          'label': 'Connect to Remote REPL Server'
           'command': 'clojure-party-repl:connectToRemoteRepl'
         },
         {

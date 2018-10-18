@@ -16,14 +16,14 @@
 (def repl-state
   {:current-working-directory ""
    :process-env nil
-   :lein-process nil
+   :repl-process nil
    :connection nil
    :session nil
    :host "localhost"
    :port nil
    :current-ns "user"
    :init-code nil
-   :type nil
+   :repl-type nil
    :subscriptions nil
    :process nil
    :host-input-editor nil
@@ -86,7 +86,8 @@
 ;;       should, however, allow user to open one big folder that contains
 ;;       multiple projects.
 (defn ^:private get-project-path
-  "Returns the project path of the given editor or the active editor."
+  "Returns the project path of the given editor or nil if there is no project
+  associated with the editor."
   ([]
    (get-project-path (.getActiveTextEditor (.-workspace js/atom))))
   ([text-editor]
@@ -97,10 +98,21 @@
        (console-log "----Project---->" directory-path " - " relative-path)
        (get-project-directory-from-path directory-path relative-path))))))
 
+(defn get-active-project-path
+  "Returns the path of the project that corresponds to the active editor or nil
+  if no project is associated with the active text editor."
+  []
+  (get-project-path))
+
 (defn get-project-name-from-path
-  "Returns the project name from the given path."
+  "Returns the project name from the given path or nil."
   [project-path]
-  (last (string/split project-path #"/")))
+  (when project-path
+    (last (string/split project-path #"/"))))
+
+(defn get-active-project-name
+  []
+  (get-project-name-from-path (get-active-project-path)))
 
 (defn get-project-name-from-text-editor
   "Returns the project name from the path of the text editor."
@@ -167,17 +179,17 @@
 ;; TODO: Pretty print results
 (defn append-to-editor
   "Appends text at the end of the editor. Always append a newline following the
-  text unless specified not to. Because of the Clojure grammar set on the
-  editor, we need to check if the last line only contains whitespaces, and move
-  the cursor to the front of the line in order to ignore them. Otherwise, any
+  text unless specified not to. If the last line only contains whitespaces,
+  delete all whitespaces of the line in order to ignore them. Otherwise, any
   text appended after that gets indented to the right."
-  [editor text & {:keys [add-newline?] :or {add-newline? true}}]
+  [editor output & {:keys [add-newline?] :or {add-newline? true}}]
   (when editor
-    (.moveToBottom editor)
-    (when (re-find #"^\s+$" (.getLastLine (.getBuffer editor)))
-      (.moveToBeginningOfLine editor))
-    (.insertText editor text (js-obj "bypassReadOnly" true))
-    (when add-newline?
-      (.insertNewlineBelow editor))
-    (.scrollToBottom (.-element editor))
-    (.moveToBottom editor)))
+    (let [text (if add-newline?
+                 (str output "\n")
+                 output)]
+      (.moveToBottom editor)
+      (when (re-find #"^\s+$" (.getLastLine (.getBuffer editor)))
+        (.deleteToBeginningOfLine editor))
+      (.insertText editor text (js-obj "bypassReadOnly" true))
+      (.scrollToBottom (.-element editor))
+      (.moveToBottom editor))))

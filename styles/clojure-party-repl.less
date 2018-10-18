@@ -22,8 +22,27 @@
     background-color: rgba(100, 148, 237, 0.6);
 }
 
-.highlight.elisions .region {
+.highlight.clojure-party-repl.elisions .region {
     background-color: rgba(100, 148, 237, 0.6);
     border-radius: 3px;
     cursor: pointer;
+}
+
+.clojure-party-repl.container {
+    padding-bottom: @component-padding;
+}
+
+.clojure-party-repl.button-container {
+    position: relative;
+    height: @component-line-height;
+}
+
+.clojure-party-repl.cancel-button {
+    position: absolute;
+    left: 0;
+}
+
+.clojure-party-repl.proceed-button {
+    position: absolute;
+    right: 0;
 }

@@ -35,12 +35,11 @@
           (local-repl/start-local-repl project-path))))
     (show-error "Cannot start a REPL. Current file is not located inside a project directory or the project directory doesn't have project.clj file.")))
 
-(defn connect-to-nrepl
+(defn connect-to-remote-repl
   "Exported plugin command. Connects to an existing nrepl by host and port."
   [event]
-  (console-log "clojure-party-repl on the case!")
   (go
-    (when-let [{:keys [host port project-name]} (<! (panel/prompt-connection-panel strings/nrepl-connection-message))]
+    (when-let [{:keys [project-name repl-type host port] :as repl-options} (<! (panel/prompt-connection-panel strings/nrepl-connection-message))]
       (if (get-in @repls [project-name :connection])
         (show-error "There's already a REPL for a project " project-name " "
                     "connected to " host ":" port)
@@ -48,11 +47,9 @@
           (common/add-repl project-name
                            :host host
                            :port port
-                           :lein-process :remote
-                           :init-code "(.name *ns*)"
-                           :type :nrepl)
+                           :repl-process :remote)
           (host/create-editors project-name)
-          (remote-repl/connect-to-remote-repl project-name host port))))))
+          (remote-repl/connect-to-remote-repl repl-options))))))
 
 (def send-to-repl
   "Exported plugin command. Grabs text from the appropriate editor, depending on
@@ -104,7 +101,7 @@
   []
   (swap! state update :disposables concat
     [(.add commands "atom-workspace" (str package-namespace ":startLocalRepl") start-local-repl)
-     (.add commands "atom-workspace" (str package-namespace ":connectToRemoteRepl") connect-to-nrepl)
+     (.add commands "atom-workspace" (str package-namespace ":connectToRemoteRepl") connect-to-remote-repl)
      (.add commands "atom-workspace" (str package-namespace ":sendToRepl") send-to-repl)
      (.add commands "atom-text-editor.repl-entry" (str package-namespace ":showNewerHistory") show-newer-repl-history)
      (.add commands "atom-text-editor.repl-entry" (str package-namespace ":showOlderHistory") show-older-repl-history)]))

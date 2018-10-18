@@ -8,15 +8,29 @@ Clojure REPL for Atom written in ClojureScript with full Teletype support for pa
 ## How to use this
 Open or add your project folder inside Atom, and follow one of the methods below:
 
-Start a local nREPL with Leiningen:
+Start a local nREPL server with Leiningen:
 1. Open a file in the project folder, and focus on the file so it has a blinking cursor.
+
 2. Go to Atom's menu bar and select Packages -> Clojure Party Repl -> Start Local REPL
+
 3. Make sure `lein` command is available and there's `project.clj` in the root directory.
 
 Connect to a remote nREPL server:
 1. Have a running nREPL ready to be connected.
-2. Go to Atom's menu bar and select Packages -> Clojure Party Repl -> Connect to Remote nREPL server
+
+2. Go to Atom's menu bar and select Packages -> Clojure Party Repl -> Connect to Remote REPL server
+
 3. Fill out the pop out panel and hit an Enter key to connect.
+
+Connect to a remote [Unrepl](https://github.com/Unrepl/unrepl) server:
+1. Have a running Clojure Socket REPL ready to be connected. Socket REPL can be launched in a few different ways:
+    - Use Leiningen project by adding `:jvm-opts ["-Dclojure.server.repl={:port 9999 :accept clojure.core.server/repl}"]` to your `project.clj` and start your repl normally.
+    - Use Clojure jar in the terminal by typing in `java -Dclojure.server.myrepl="{:port 9999,:accept,clojure.core.server/repl}" -jar ~/.m2/repository/org/clojure/clojure/1.8.0/clojure-1.8.0.jar`.
+
+
+2. Go to Atom's menu bar and select Packages -> Clojure Party Repl -> Connect to Remote REPL server
+
+3. Fill out the pop out panel and connect. It will upgrade your Socket REPL to unrepl!
 
 Once it's connected to the REPL, there should be two new tabs called `Clojure Party REPL History` and `Clojure Party REPL Entry`. The History tab shows all the output from the REPL, and the Entry tab is where you can type in code to send over to the REPL.
 
@@ -146,7 +160,7 @@ Exported functions can be linked to keybindings and menu items, checkout the sta
 - [ ] Support for Boot
 - [x] Support for remote nREPLs
 - [ ] Support for Socket REPLs (clojure.core style REPLs)
-- [ ] unRepl support *(in progress)*
+- [x] unRepl support
 - [ ] Add line number and file metadata to stacktraces.
 - [ ] ClojureScript support
 

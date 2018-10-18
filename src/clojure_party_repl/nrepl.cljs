@@ -184,7 +184,7 @@
     connection))
 
 ;; ---------------------------------------------------
-;; Connection should be enstablished as below:
+;; Connection should be established as below:
 ;; ---------------------------------------------------
 (defn ^:private namespace-not-found? [message]
   (when (.-status message)
@@ -202,11 +202,11 @@
                  (repl/pst throwable)
                  (throw (Exception. (str *err*)))))))"))
 
-(comment "Sends code over to repl with current namespace, or optional namespace if
-specified. When a namespace-not-found message is received, resend the code
-to the current namespace.")
 (defmethod repl/execute-code :repl-type/nrepl
-  [project-name code & [{:keys [namespace resent?]}]]
+  ;; Sends code over to repl with current namespace, or optional namespace if
+  ;; specified. When a namespace-not-found message is received, resend the code
+  ;; to the current namespace.
+  [project-name code & [{:keys [namespace resent?] :as options}]]
   (let [wrapped-code (wrap-to-catch-exception code)
         {:keys [connection session current-ns]} (get @repls project-name)
         options {"session" session
@@ -261,30 +261,28 @@ to the current namespace.")
               (output-namespace project-name))))
         (recur)))))
 
-(comment "Closes the nrepl connection and kills the lein process. This will also kill
-all the child processes created by the lein process.")
 (defmethod repl/stop-process :repl-type/nrepl
+  ;; Closes the nrepl connection and kills the lein process. This will also kill
+  ;; all the child processes created by the lein process.
   [project-name]
-  (let [{:keys [connection lein-process]} (get @repls project-name)]
+  (let [{:keys [connection repl-process]} (get @repls project-name)]
     (when connection
       (repl/close connection))
     (when (= (repl/get-most-recent-repl) project-name)
       (bencode/reset-decode-data))
-    (when (= :remote lein-process)
+    (when (= :remote repl-process)
       (console-log "Remote repl connection closed!"))
-    (when-not (contains? #{:remote nil} lein-process)
-      (console-log "Killing process... " (.-pid lein-process))
-      (.removeAllListeners lein-process)
-      (.removeAllListeners (.-stdout lein-process))
-      (.removeAllListeners (.-stderr lein-process))
-      (when-let [pid (.-pid lein-process)]
+    (when-not (contains? #{:remote nil} repl-process)
+      (console-log "Killing process... " (.-pid repl-process))
+      (.removeAllListeners repl-process)
+      (.removeAllListeners (.-stdout repl-process))
+      (.removeAllListeners (.-stderr repl-process))
+      (when-let [pid (.-pid repl-process)]
         (.kill process pid "SIGKILL")))
-    (swap! repls update project-name #(assoc % :lein-process nil))))
+    (swap! repls update project-name #(assoc % :repl-process nil))))
 
-(defn connect-to-nrepl [project-name host port]
-  (connect {:project-name project-name
-            :host host
-            :port port}
+(defn connect-to-nrepl [{:keys [project-name host port] :as repl-options}]
+  (connect repl-options
            (fn [connection session]
              (console-log "Connection succeeded!! " connection)
              (when session
@@ -295,5 +293,5 @@ all the child processes created by the lein process.")
                (repl/update-most-recent-repl project-name)
                (handle-messages project-name connection)
                (repl/remove-placeholder-text project-name)
-               (when-let [init-code (get-in @repls [project-name :init-code])]
-                 (repl/execute-code project-name init-code))))))
+               (when (= :remote (get-in @repls [project-name :repl-process]))
+                 (repl/execute-code project-name "(.name *ns*)"))))))
