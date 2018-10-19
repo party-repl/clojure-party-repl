@@ -80,7 +80,9 @@
   [project-name]
   (let [output-editor (get-in @repls [project-name :host-output-editor])]
     (add-subscription project-name
-                      (.onDidChangeCursorPosition output-editor (partial on-elision-click project-name)))))
+                      (.onDidChangeCursorPosition output-editor (partial on-elision-click project-name)))
+    (add-subscription project-name
+                      (.onDidAddCursor output-editor (fn [cursor] (console-log "====Cursor===>" cursor))))))
 
 (defn ^:private look-for-elisions
   "Searches inside the range for elisions and replaces them with ellipsis. It
@@ -92,7 +94,7 @@
     (flatten [0 1 2 [3 4 5 [6 7] [8 9 10]] 11 12 [13 [14 15 16] 17 18 [19]] 20])
     (str \"Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s.\")"
   [project-name changed-range]
-  (let [{:keys [host-output-editor] {:keys [elision-regex]} :connection} (get-in @repls [project-name])]
+  (let [{:keys [host-output-editor] {:keys [elision-regex elision-marker-layer]} :connection} (get-in @repls [project-name])]
     (.scanInBufferRange host-output-editor
                         elision-regex
                         changed-range
@@ -100,10 +102,7 @@
                           (let [match (.-match result)
                                 range (.-range result)
                                 replace-text (.-replace result)
-                                marker (.markBufferRange host-output-editor range (js-obj "maintainHistory" true
-                                                                                          "invalidate" "never"))
-                                decoration (.decorateMarker host-output-editor marker (js-obj "type" "highlight"
-                                                                                              "class" "clojure-party-repl elisions"))
+                                marker (.markBufferRange elision-marker-layer range (js-obj "invalidate" "never"))
                                 continuation-fn (str (second match))]
                             (replace-text ellipsis)
                             (swap! repls update-in [project-name :connection :elisions] #(assoc % marker continuation-fn)))))))
@@ -125,6 +124,15 @@
   (let [output-editor (get-in @repls [project-name :host-output-editor])]
     (add-subscription project-name
                       (.onDidStopChanging output-editor (partial on-elision-append project-name)))))
+
+(defn ^:private add-elision-marker-layer [project-name]
+  (let [{:keys [host-output-editor]} (get-in @repls [project-name])
+        marker-layer (.addMarkerLayer host-output-editor (js-obj "maintainHistory" true))]
+    (.decorateMarkerLayer host-output-editor
+                          marker-layer
+                          (js-obj "type" "highlight"
+                                  "class" "clojure-party-repl elisions"))
+    (swap! repls update-in [project-name :connection] #(assoc % :elision-marker-layer marker-layer))))
 
 (defmulti handle-unrepl-tuple
   (fn [project-name tuple]
@@ -226,7 +234,8 @@
                                                      (string/escape unrepl-ns {\_ "\\_" \. "\\."})
                                                      "\\/fetch\\s+\\:[A-Za-z]+\\_\\_[0-9]+\\))\\}") "gm")))
     (add-elision-click-handler project-name)
-    (add-elision-append-handler project-name)))
+    (add-elision-append-handler project-name)
+    (add-elision-marker-layer project-name)))
 
 (defn read-clojure-var [v]
   (symbol (str "#'" v)))
@@ -340,9 +349,11 @@
 (defmethod repl/stop-process :repl-type/unrepl
   [project-name]
   (let [{:keys [connection repl-process]} (get @repls project-name)
-        {:keys [socket-connection]} connection]
+        {:keys [socket-connection elision-marker-layer]} connection]
     (when socket-connection
-      (.end socket-connection))))
+      (.end socket-connection))
+    (when elision-marker-layer
+      (.destroy elision-marker-layer))))
 
 (defn connect-to-remote-plain-repl [{:keys [project-name host port]}]
   (let [conn (net.Socket.)]
