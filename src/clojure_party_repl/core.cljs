@@ -16,7 +16,7 @@
             [clojure-party-repl.execution :as execution]
             [clojure-party-repl.connection-panel :as panel]
             [clojure-party-repl.strings :as strings]
-            [clojure-party-repl.repl-view :refer [create-repl-view]]))
+            [clojure-party-repl.repl-view :as repl-view :refer [create-repl-view]]))
 
 (def commands (.-commands js/atom))
 
@@ -149,12 +149,23 @@
        :type "string"
        :default ""}}))
 
-(defn add-open-listener []
-  (.addOpener (.-workspace js/atom)
+(defn add-open-listener
+  "NOTE: The opener will be called if and only if the URI is not already open in the current pane."
+  []
+  (repl-view/replace-on-did-add-text-editor)
+  (swap! state update :disposables concat
+    [(.addOpener (.-workspace js/atom)
               (fn [uri]
                 (println "listening for" uri)
                 (when (string/starts-with? uri "party-repl://")
-                  (create-repl-view uri)))))
+                  (let [item (create-repl-view uri)]
+                    (go
+                      (<! (async/timeout 500))
+                      (let [workspace (.-workspace js/atom)
+                            pane (.getActivePane workspace)]
+                        (repl-view/trigger-on-did-add-text-editor (.-outputEditor item))
+                        (repl-view/trigger-on-did-add-text-editor (.-inputEditor item))))
+                    item))))]))
 
 (defn activate
   "Initializes the plugin, called automatically by Atom, during startup or if
