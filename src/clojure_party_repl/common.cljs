@@ -28,15 +28,19 @@
    :process nil
    :host-input-editor nil
    :host-output-editor nil
+   :host-hidden-buffer nil
    :guest-input-editor nil
    :guest-output-editor nil
+   :guest-hidden-buffer nil
    :repl-history (list)
    :current-history-index -1})
 
 (def state
   (atom {:disposables []
          :lein-path ""
-         :most-recent-repl-project-name nil}))
+         :most-recent-repl-project-name nil
+         :hidden-pane nil
+         :hidden-buffers #{}}))
 
 ;; NOTE: When this is true, all output will be printed to the Console. In order
 ;; to turn this on, change it to true and recompile. You can also change it

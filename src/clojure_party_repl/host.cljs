@@ -4,12 +4,15 @@
             [clojure-party-repl.execution :as execution]
             [clojure-party-repl.strings :refer [output-editor-title
                                                 input-editor-title
+                                                hidden-editor-title
                                                 execute-comment
                                                 output-editor-placeholder]]
             [clojure-party-repl.common :as common :refer [add-subscription
                                                           destroy-editor
                                                           dispose-project-if-empty
-                                                          repls]]))
+                                                          repls
+                                                          state]]
+            [clojure-party-repl.hidden-buffer :as hidden-buffer]))
 
 ;; TODO: Combine the output editor and input editor into a single paneItem.
 
@@ -30,7 +33,7 @@
   (swap! repls update project-name #(assoc % :subscriptions nil)))
 
 ;; TODO: Ignore any key commands inside the output-editor
-(defn create-output-editor
+(defn ^:private create-output-editor
   "Opens a text editor for displaying repl outputs."
   [project-name]
   (-> (.-workspace js/atom)
@@ -57,8 +60,14 @@
       (.previousNonBlankRow buffer last-row)
       last-row)))
 
+(defn activate-editor [project-name editor-key]
+  (when-let [editor (get-in @repls [project-name editor-key])]
+    (when-let [pane (.paneForItem (.-workspace js/atom) editor)]
+      (.activateItem pane editor)
+      (.activate pane))))
+
 ;; TODO: Set a placeholder text to notify user when repl is ready.
-(defn create-input-editor
+(defn ^:private create-input-editor
   "Opens a text editor for simulating repl's entry area. Adds a listener
   onDidStopChanging to look for execute-comment entered by guest side using
   teletype in the entry, so that it can detect when to execute the code."
@@ -72,6 +81,13 @@
                 (.add (.-classList (.-element editor)) "repl-entry")
                 (set-grammar editor)
                 (swap! repls update project-name #(assoc % :host-input-editor editor))
+                (add-subscription project-name
+                                  (.onDidChangeActiveTextEditor (.-workspace js/atom)
+                                                                (fn [active-editor]
+                                                                  (when (= active-editor editor)
+                                                                    (activate-editor project-name :host-hidden-buffer)
+                                                                    (activate-editor project-name :host-output-editor)
+                                                                    (activate-editor project-name :host-input-editor)))))
                 (add-subscription project-name
                                   (.onDidStopChanging editor (fn [event]
                                                                (let [buffer (.getBuffer editor)
@@ -87,7 +103,19 @@
                                                           (dispose project-name)
                                                           (dispose-project-if-empty project-name))))))))
 
+(defn ^:private create-hidden-buffer
+  "Adds a text editor in the hidden pane. We need to keep the reference to
+  the hidden buffer in the state, so that the hidden pane knows that
+  text editor is a hidden buffer."
+  [project-name]
+  (let [hidden-buffer (hidden-buffer/create-hidden-buffer)]
+    (swap! repls update project-name #(assoc % :host-hidden-buffer hidden-buffer))
+    (swap! state update :hidden-buffers #(conj % hidden-buffer))
+    (hidden-buffer/open-in-hidden-pane hidden-buffer)))
+
 ;; TODO: Make sure to create input editor after output editor has been created.
 (defn create-editors [project-name]
   (create-output-editor project-name)
-  (create-input-editor project-name))
+  (create-input-editor project-name)
+  (create-hidden-buffer project-name)
+  )

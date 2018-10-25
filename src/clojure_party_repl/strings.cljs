@@ -13,5 +13,6 @@
 
 (def output-editor-title "Clojure Party REPL History")
 (def input-editor-title "Clojure Party REPL Entry")
+(def hidden-editor-title "Clojure Party REPL Hidden")
 (def execute-comment ";execute")
 (def output-editor-placeholder "Please wait for REPL to connect...")
