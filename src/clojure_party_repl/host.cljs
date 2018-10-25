@@ -84,7 +84,8 @@
                 (add-subscription project-name
                                   (.onDidChangeActiveTextEditor (.-workspace js/atom)
                                                                 (fn [active-editor]
-                                                                  (when (= active-editor editor)
+                                                                  (when (and (= active-editor editor)
+                                                                             (common/new-guest-detected? project-name))
                                                                     (activate-editor project-name :host-hidden-buffer)
                                                                     (activate-editor project-name :host-output-editor)
                                                                     (activate-editor project-name :host-input-editor)))))

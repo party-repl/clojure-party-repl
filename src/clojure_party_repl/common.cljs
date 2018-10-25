@@ -32,6 +32,7 @@
    :guest-input-editor nil
    :guest-output-editor nil
    :guest-hidden-buffer nil
+   :connected-guest-count 0
    :repl-history (list)
    :current-history-index -1})
 
@@ -64,6 +65,49 @@
   them later."
   [project-name disposable]
   (.add (get-in @repls [project-name :subscriptions]) disposable))
+
+(defn count-connected-guest
+  "Returns a number of guests connected by Teletype or nil. Teletype injects
+  a DOM element with a classname SitePositionsComponent inside the TextEditor
+  when it's active or focused.
+
+  TODO: There may be up to three of the components at the top, middle, and
+        bottom, so we need to count them from all.
+        Also, each component might only show up to three avatars and if there's
+        more people connected, we will be missing them."
+  [project-name]
+  (let [{:keys [host-input-editor host-output-editor]} (get @repls project-name)
+        active-pane-item (.getActivePaneItem (.-workspace js/atom))
+        active-editor (some #(when (= active-pane-item %) %) [host-input-editor host-output-editor])]
+    (when active-editor
+      (console-log "Active Editor Element:" (.-element active-editor))
+      (let [children (.-children (.-element active-editor))
+            site-positions-component (some #(when (.contains (.-classList %) "SitePositionsComponent") %) (array-seq children))]
+        (when site-positions-component
+          (console-log "Avatars:" site-positions-component)
+          (.-length (.-children site-positions-component)))))))
+
+(defn update-connected-guest [project-name count]
+  (swap! repls update project-name #(assoc % :connected-guest-count count)))
+
+(defn new-guest-detected? [project-name]
+  (if-let [new-count (count-connected-guest project-name)]
+    (let [current-count (get-in @repls [project-name :connected-guest-count])]
+      (console-log "Guest Count:" current-count "=>" new-count)
+      (cond
+        (= new-count current-count)
+        false
+
+        (< new-count current-count)
+        (do
+          (update-connected-guest project-name new-count)
+          false)
+
+        (> new-count current-count)
+        (do
+          (update-connected-guest project-name new-count)
+          true)))
+    false))
 
 (defn add-repl-history [project-name code]
   (when (= max-history-count (count (get-in @repls [project-name :repl-history])))
