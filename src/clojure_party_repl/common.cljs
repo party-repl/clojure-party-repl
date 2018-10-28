@@ -28,10 +28,10 @@
    :process nil
    :host-input-editor nil
    :host-output-editor nil
-   :host-hidden-buffer nil
+   :host-hidden-editor nil
    :guest-input-editor nil
    :guest-output-editor nil
-   :guest-hidden-buffer nil
+   :guest-hidden-editor nil
    :connected-guest-count 0
    :repl-history (list)
    :current-history-index -1})
@@ -41,7 +41,7 @@
          :lein-path ""
          :most-recent-repl-project-name nil
          :hidden-pane nil
-         :hidden-buffers #{}}))
+         :hidden-editors #{}}))
 
 ;; NOTE: When this is true, all output will be printed to the Console. In order
 ;; to turn this on, change it to true and recompile. You can also change it
@@ -204,9 +204,8 @@
 (defn ^:private close-editor
   "Searches through all the panes for the editor and destroys it."
   [editor]
-  (doseq [pane (.getPanes (.-workspace js/atom))]
-    (when (some #(= editor %) (.getItems pane))
-      (.destroyItem pane editor))))
+  (when-let [pane (.paneForItem (.-workspace js/atom) editor)]
+    (.destroyItem pane editor)))
 
 (defn destroy-editor
   "Destroys an editor defined in the state."

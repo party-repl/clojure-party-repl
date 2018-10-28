@@ -14,7 +14,7 @@
             [clojure-party-repl.local-repl :as local-repl]
             [clojure-party-repl.remote-repl :as remote-repl]
             [clojure-party-repl.execution :as execution]
-            [clojure-party-repl.hidden-buffer :as hidden-buffer]
+            [clojure-party-repl.hidden-editor :as hidden-editor]
             [clojure-party-repl.connection-panel :as panel]
             [clojure-party-repl.strings :as strings]))
 
@@ -156,7 +156,7 @@
   (add-commands)
   (observe-settings-changes)
   (panel/create-connection-panel)
-  (hidden-buffer/create-hidden-pane)
+  (hidden-editor/create-hidden-pane)
   (guest/look-for-teletyped-repls))
 
 (defn deactivate
@@ -166,11 +166,11 @@
   (console-log "Deactivating clojure-party-repl...")
   (dispose-repls)
   (reset! repls {})
-  (hidden-buffer/destroy-hidden-pane)
+  (hidden-editor/destroy-hidden-pane)
   (doseq [disposable (get @state :disposables)]
     (.dispose disposable))
   (swap! state assoc :disposables [])
-  (swap! state assoc :hidden-buffers #{}))
+  (swap! state assoc :hidden-editors #{}))
 
 (def start
   "Activates the plugin, used for development."

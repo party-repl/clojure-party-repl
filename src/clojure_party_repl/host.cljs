@@ -10,9 +10,10 @@
             [clojure-party-repl.common :as common :refer [add-subscription
                                                           destroy-editor
                                                           dispose-project-if-empty
+                                                          console-log
                                                           repls
                                                           state]]
-            [clojure-party-repl.hidden-buffer :as hidden-buffer]))
+            [clojure-party-repl.hidden-editor :as hidden-editor]))
 
 ;; TODO: Combine the output editor and input editor into a single paneItem.
 
@@ -25,7 +26,9 @@
   "Destroys both output and input editors."
   [project-name]
   (destroy-editor project-name :host-output-editor)
-  (destroy-editor project-name :host-input-editor))
+  (destroy-editor project-name :host-input-editor)
+  (destroy-editor project-name :host-hidden-editor)
+  (hidden-editor/remove-hidden-editor project-name :host-hidden-editor))
 
 (defn dispose [project-name]
   (destroy-editors project-name)
@@ -86,7 +89,7 @@
                                                                 (fn [active-editor]
                                                                   (when (and (= active-editor editor)
                                                                              (common/new-guest-detected? project-name))
-                                                                    (activate-editor project-name :host-hidden-buffer)
+                                                                    (activate-editor project-name :host-hidden-editor)
                                                                     (activate-editor project-name :host-output-editor)
                                                                     (activate-editor project-name :host-input-editor)))))
                 (add-subscription project-name
@@ -104,19 +107,22 @@
                                                           (dispose project-name)
                                                           (dispose-project-if-empty project-name))))))))
 
-(defn ^:private create-hidden-buffer
+(defn ^:private create-hidden-editor
   "Adds a text editor in the hidden pane. We need to keep the reference to
   the hidden buffer in the state, so that the hidden pane knows that
   text editor is a hidden buffer."
   [project-name]
-  (let [hidden-buffer (hidden-buffer/create-hidden-buffer)]
-    (swap! repls update project-name #(assoc % :host-hidden-buffer hidden-buffer))
-    (swap! state update :hidden-buffers #(conj % hidden-buffer))
-    (hidden-buffer/open-in-hidden-pane hidden-buffer)))
+  (let [hidden-editor (hidden-editor/create-hidden-editor)
+        title (str hidden-editor-title " " project-name)
+        path (.resolvePath (.-project js/atom) title)]
+    (console-log "Creating hidden editor:" title path)
+    (swap! repls update project-name #(assoc % :host-hidden-editor hidden-editor))
+    (.setPath (.getBuffer hidden-editor) path)
+    (hidden-editor/open-in-hidden-pane hidden-editor)))
 
 ;; TODO: Make sure to create input editor after output editor has been created.
 (defn create-editors [project-name]
   (create-output-editor project-name)
   (create-input-editor project-name)
-  (create-hidden-buffer project-name)
+  (create-hidden-editor project-name)
   )
