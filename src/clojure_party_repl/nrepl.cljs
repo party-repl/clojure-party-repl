@@ -2,9 +2,10 @@
   (:require [cljs.nodejs :as node]
             [clojure.string :as string]
             [oops.core :refer [oget oset! oset!+ ocall]]
-            [clojure-party-repl.common :refer [console-log repls add-repl-history]]
+            [clojure-party-repl.common :refer [console-log repls]]
             [clojure-party-repl.bencode :as bencode]
             [clojure-party-repl.repl :as repl]
+            [clojure-party-repl.hidden-editor :refer [add-repl-history]]
             [cljs.core.async :as async :refer [chan timeout close! <! >! alts!]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
@@ -247,7 +248,6 @@
 (defn ^:private handle-messages
   "Outputs messages as they come into the output channel."
   [project-name connection]
-  (console-log "Handler called...")
   (let [output-chan (:output-chan connection)]
     (go-loop []
       (when-let [messages (<! output-chan)]

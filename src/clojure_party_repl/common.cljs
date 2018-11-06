@@ -41,6 +41,7 @@
          :lein-path ""
          :most-recent-repl-project-name nil
          :hidden-pane nil
+         :hidde-dummy-editor nil
          :hidden-editors #{}}))
 
 ;; NOTE: When this is true, all output will be printed to the Console. In order
@@ -108,12 +109,6 @@
           (update-connected-guest project-name new-count)
           true)))
     false))
-
-(defn add-repl-history [project-name code]
-  (when (= max-history-count (count (get-in @repls [project-name :repl-history])))
-    (swap! repls update project-name #(update % :repl-history butlast)))
-  (swap! repls update project-name #(update % :repl-history (fn [history] (conj history code))))
-  (swap! repls update project-name #(assoc % :current-history-index -1)))
 
 ;; TODO: Warn user when project.clj doesn't exist in the project.
 (defn get-project-clj [project-path]
@@ -200,12 +195,11 @@
   (swap! repls assoc project-name (-> (apply assoc repl-state options)
                                       (assoc :subscriptions (CompositeDisposable.)))))
 
-;; TODO: Support destroying multiple editors with a shared buffer.
-(defn ^:private close-editor
+(defn close-editor
   "Searches through all the panes for the editor and destroys it."
   [editor]
   (when-let [pane (.paneForItem (.-workspace js/atom) editor)]
-    (.destroyItem pane editor)))
+    (.destroyItem pane editor true)))
 
 (defn destroy-editor
   "Destroys an editor defined in the state."

@@ -1,5 +1,5 @@
 (ns clojure-party-repl.host
-  (:require [clojure.string :as string :refer [ends-with? trim trim-newline replace]]
+  (:require [clojure.string :refer [ends-with? trim replace]]
             [clojure-party-repl.repl :as repl]
             [clojure-party-repl.execution :as execution]
             [clojure-party-repl.strings :refer [output-editor-title
@@ -118,7 +118,8 @@
     (console-log "Creating hidden editor:" title path)
     (swap! repls update project-name #(assoc % :host-hidden-editor hidden-editor))
     (.setPath (.getBuffer hidden-editor) path)
-    (hidden-editor/open-in-hidden-pane hidden-editor)))
+    (hidden-editor/open-in-hidden-pane hidden-editor)
+    (hidden-editor/add-change-listener project-name hidden-editor)))
 
 ;; TODO: Make sure to create input editor after output editor has been created.
 (defn create-editors [project-name]

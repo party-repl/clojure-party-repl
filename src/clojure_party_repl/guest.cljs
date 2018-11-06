@@ -11,7 +11,8 @@
                                                           repls
                                                           state
                                                           console-log]]
-            [clojure-party-repl.hidden-editor :refer [open-in-hidden-pane]]))
+            [clojure-party-repl.hidden-editor :refer [open-in-hidden-pane
+                                                      add-change-listener]]))
 
 (defn ^:private find-project-name-from-title [editor subtitle]
   (let [title (.getTitle editor)
@@ -32,6 +33,9 @@
     (.splitRight (.paneForItem (.-workspace js/atom) editor) (js-obj "items" [editor]))
     (when-let [input-editor (get-in @repls [project-name :guest-input-editor])]
       (.splitBottom (.paneForItem (.-workspace js/atom) editor) (js-obj "items" [input-editor])))
+    (add-subscription project-name
+                      (.onDidChangeCursorPosition editor
+                                                  (fn [event])))
     (add-subscription project-name
                       (.onDidDestroy editor
                                     (fn [event]
@@ -64,6 +68,7 @@
       (add-repl project-name))
     (swap! repls update project-name #(assoc % :guest-hidden-editor editor))
     (open-in-hidden-pane editor :moved? true)
+    (add-change-listener project-name editor)
     (add-subscription project-name
                       (.onDidDestroy editor
                                     (fn [event]

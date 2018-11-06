@@ -5,10 +5,10 @@
             [clojure.string :as string]
             [oops.core :refer [oget oset! oset!+ ocall]]
             [clojure-party-repl.common :refer [console-log show-error repls
-                                               add-repl-history
                                                add-subscription]]
             [clojure-party-repl.bencode :as bencode]
             [clojure-party-repl.repl :as repl]
+            [clojure-party-repl.hidden-editor :refer [add-repl-history]]
             [cljs.core.async :as async :refer [chan timeout close! <! >! alts!]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
