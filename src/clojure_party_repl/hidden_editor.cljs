@@ -58,7 +58,7 @@
 (defn ^:private get-next-pane [pane]
   (let [panes (.getPanes (.getActivePaneContainer (.-workspace js/atom)))
         current-index (.indexOf panes pane)
-        next-index (mod (inc current-index) (.-length panes))]
+        next-index (mod (inc current-index) (inc (.-length panes)))]
     (aget panes next-index)))
 
 (defn ^:private add-listeners
@@ -71,11 +71,7 @@
                                   (let [item (.-item event)]
                                     (when-not (hidden-editor? item)
                                       (console-log "Moving item to the next pane!" item)
-                                      (.removeItem hidden-pane item true)
-                                      (.addItem (get-next-pane hidden-pane) item (js-obj "moved" true))))))
-     (.onDidActivate hidden-pane (fn [& args]
-                                   (console-log "Activating next pane!")
-                                   (.activateNextPane (.-workspace js/atom))))]))
+                                      (.moveItemToPane hidden-pane item (get-next-pane hidden-pane))))))]))
 
 (defn ^:private hide-resize-handle [pane-element]
   (let [handle-element (.-nextSibling pane-element)]
@@ -120,8 +116,14 @@
 (defn open-in-hidden-pane [hidden-editor & {:keys [moved?]}]
   (let [hidden-pane (get @state :hidden-pane)]
     (swap! state update :hidden-editors #(conj % hidden-editor))
-    (.addItem hidden-pane hidden-editor (js-obj "moved" moved?))
-    (.setActiveItem hidden-pane hidden-editor)))
+    (if moved?
+      (let [current-pane (.paneForItem (.-workspace js/atom) hidden-editor)]
+        (.moveItemToPane current-pane hidden-editor hidden-pane)
+        (.activateItem hidden-pane hidden-editor)
+        (.activate hidden-pane))
+      (do
+        (.addItem hidden-pane hidden-editor (js-obj "moved" moved?))
+        (.setActiveItem hidden-pane hidden-editor)))))
 
 (defn create-hidden-editor []
   (let [editor (.buildTextEditor (.-workspace js/atom)
@@ -149,7 +151,7 @@
            (str (encode-base64 text) "\n")
            (js-obj "bypassReadOnly" true)))
   ;(doto hidden-editor
-  ;  (.setCursorBufferPosition (clj->js [row 0]) (js-obj "autoscroll" false))
+  ;  (.setCursorBufferPosition (array row 0) (js-obj "autoscroll" false))
   ;  (.insertText text (js-obj "bypassReadOnly" true))))
 
 (defn update-hidden-state [hidden-editor state-type text]

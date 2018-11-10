@@ -21,6 +21,31 @@
       (subs title (+ i (count (str subtitle " "))))
       (console-log "ERROR: REPL Editor should contain " subtitle " in the title"))))
 
+(defn ^:private split-right [editor]
+  (let [current-pane (.paneForItem (.-workspace js/atom) editor)
+        new-pane (.splitRight current-pane)]
+    (.activate current-pane)
+    (.moveItemToPane current-pane editor new-pane)
+    (.activateItem new-pane editor)
+    (.activate new-pane)))
+
+(defn ^:private split-down [output-editor input-editor]
+  (let [current-pane (.paneForItem (.-workspace js/atom) input-editor)
+        output-pane (.paneForItem (.-workspace js/atom) output-editor)
+        new-pane (.splitDown output-pane)]
+    (.activate current-pane)
+    (.moveItemToPane current-pane input-editor new-pane)
+    (.activateItem new-pane input-editor)
+    (.activate new-pane)))
+
+(defn ^:private split-up [output-editor input-editor]
+  (let [current-pane (.paneForItem (.-workspace js/atom) output-editor)
+        input-pane (.paneForItem (.-workspace js/atom) input-editor)
+        new-pane (.splitUp input-pane)]
+    (.moveItemToPane current-pane output-editor new-pane)
+    (.activateItem new-pane output-editor)
+    (.activate new-pane)))
+
 (defn ^:private link-output-editor
   "Keeps the reference to the output editor associated with the project name
   and moves the editor to the right pane. If the input editor is already found,
@@ -30,12 +55,9 @@
     (when-not (get @repls project-name)
       (add-repl project-name))
     (swap! repls update project-name #(assoc % :guest-output-editor editor))
-    (.splitRight (.paneForItem (.-workspace js/atom) editor) (js-obj "items" [editor]))
-    (when-let [input-editor (get-in @repls [project-name :guest-input-editor])]
-      (.splitBottom (.paneForItem (.-workspace js/atom) editor) (js-obj "items" [input-editor])))
-    (add-subscription project-name
-                      (.onDidChangeCursorPosition editor
-                                                  (fn [event])))
+    (if-let [input-editor (get-in @repls [project-name :guest-input-editor])]
+      (split-up editor input-editor)
+      (split-right editor))
     (add-subscription project-name
                       (.onDidDestroy editor
                                     (fn [event]
@@ -51,8 +73,9 @@
     (when-not (get @repls project-name)
       (add-repl project-name))
     (swap! repls update project-name #(assoc % :guest-input-editor editor))
-    (when-let [output-editor (get-in @repls [project-name :guest-output-editor])]
-      (.splitBottom (.paneForItem (.-workspace js/atom) output-editor) (js-obj "items" [editor])))
+    (if-let [output-editor (get-in @repls [project-name :guest-output-editor])]
+      (split-down output-editor editor)
+      (split-right editor))
     (add-subscription project-name
                       (.onDidDestroy editor
                                     (fn [event]

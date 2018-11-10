@@ -35,6 +35,12 @@
   (.dispose (get-in @repls [project-name :subscriptions]))
   (swap! repls update project-name #(assoc % :subscriptions nil)))
 
+(defn activate-editor [project-name editor-key]
+  (when-let [editor (get-in @repls [project-name editor-key])]
+    (when-let [pane (.paneForItem (.-workspace js/atom) editor)]
+      (.activateItem pane editor)
+      (.activate pane))))
+
 ;; TODO: Ignore any key commands inside the output-editor
 (defn ^:private create-output-editor
   "Opens a text editor for displaying repl outputs."
@@ -63,12 +69,6 @@
       (.previousNonBlankRow buffer last-row)
       last-row)))
 
-(defn activate-editor [project-name editor-key]
-  (when-let [editor (get-in @repls [project-name editor-key])]
-    (when-let [pane (.paneForItem (.-workspace js/atom) editor)]
-      (.activateItem pane editor)
-      (.activate pane))))
-
 ;; TODO: Set a placeholder text to notify user when repl is ready.
 (defn ^:private create-input-editor
   "Opens a text editor for simulating repl's entry area. Adds a listener
@@ -90,7 +90,6 @@
                                                                   (when (and (= active-editor editor)
                                                                              (common/new-guest-detected? project-name))
                                                                     (activate-editor project-name :host-hidden-editor)
-                                                                    (activate-editor project-name :host-output-editor)
                                                                     (activate-editor project-name :host-input-editor)))))
                 (add-subscription project-name
                                   (.onDidStopChanging editor (fn [event]
