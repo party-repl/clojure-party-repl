@@ -55,9 +55,6 @@
     (when-not (get @repls project-name)
       (add-repl project-name))
     (swap! repls update project-name #(assoc % :guest-output-editor editor))
-    (if-let [input-editor (get-in @repls [project-name :guest-input-editor])]
-      (split-up editor input-editor)
-      (split-right editor))
     (add-subscription project-name
                       (.onDidDestroy editor
                                     (fn [event]
@@ -73,9 +70,6 @@
     (when-not (get @repls project-name)
       (add-repl project-name))
     (swap! repls update project-name #(assoc % :guest-input-editor editor))
-    (if-let [output-editor (get-in @repls [project-name :guest-output-editor])]
-      (split-down output-editor editor)
-      (split-right editor))
     (add-subscription project-name
                       (.onDidDestroy editor
                                     (fn [event]

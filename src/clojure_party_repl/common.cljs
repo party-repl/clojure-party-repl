@@ -110,6 +110,19 @@
           true)))
     false))
 
+(defn show-current-history
+  "Replaces the content of the input-editor with one of the executed commands in
+  the history at the current history index."
+  [project-name editor]
+  (let [current-history-index (get-in @repls [project-name :current-history-index])]
+    (if (> 0 current-history-index)
+      (.setText editor "")
+      (when (> (count (get-in @repls [project-name :repl-history]))
+               current-history-index)
+        (.setText editor
+                  (nth (get-in @repls [project-name :repl-history])
+                       current-history-index))))))
+
 ;; TODO: Warn user when project.clj doesn't exist in the project.
 (defn get-project-clj [project-path]
   (let [project-clj-path (str project-path "/project.clj")]

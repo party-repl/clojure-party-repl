@@ -6,9 +6,11 @@
             [oops.core :refer [oget]]
             [clojure-party-repl.strings :refer [output-editor-title
                                           input-editor-title]]
-            [clojure-party-repl.common :as common :refer [state repls console-log
-                                                    show-error visible-repl?
-                                                    get-project-name-from-input-editor]]
+            [clojure-party-repl.common :as common :refer [state repls
+                                                          console-log
+                                                          show-error
+                                                          show-current-history
+                                                          get-project-name-from-input-editor]]
             [clojure-party-repl.host :as host]
             [clojure-party-repl.guest :as guest]
             [clojure-party-repl.local-repl :as local-repl]
@@ -57,44 +59,32 @@
   the context and sends it to the repl."
   execution/send-to-repl)
 
-(defn ^:private show-current-history
-  "Replaces the content of the input-editor with one of the executed commands in
-  the history at the current history index."
-  [project-name editor]
-  (.setText editor
-            (nth (get-in @repls [project-name :repl-history])
-                 (get-in @repls [project-name :current-history-index]))))
-
 (defn show-older-repl-history
-  "Exported plugin command. Replaces the content of the input-editor with an
-  older history item."
+  "Exported plugin command."
   [event]
   (let [editor (.getActiveTextEditor (.-workspace js/atom))
         project-name (get-project-name-from-input-editor editor)]
     (when (and project-name
               (or (= editor (get-in @repls [project-name :guest-input-editor]))
                   (= editor (get-in @repls [project-name :host-input-editor]))))
-      (when (< (get-in @repls [project-name :current-history-index])
-               (count (get-in @repls [project-name :repl-history])))
-        (swap! repls update project-name #(update % :current-history-index inc)))
-      (when (> (count (get-in @repls [project-name :repl-history]))
-               (get-in @repls [project-name :current-history-index]))
-        (show-current-history project-name editor)))))
+      (let [{:keys [current-history-index host-hidden-editor guest-hidden-editor]} (get @repls project-name)
+            hidden-editor (or host-hidden-editor guest-hidden-editor)]
+        (when (< current-history-index
+                 (count (get-in @repls [project-name :repl-history])))
+          (hidden-editor/replace-hidden-state hidden-editor :current-history-index (inc current-history-index)))))))
 
 (defn show-newer-repl-history
-  "Exported plugin command. Replaces the content of the input-editor with a
-  newer history item."
+  "Exported plugin command."
   [event]
   (let [editor (.getActiveTextEditor (.-workspace js/atom))
         project-name (get-project-name-from-input-editor editor)]
     (when (and project-name
               (or (= editor (get-in @repls [project-name :guest-input-editor]))
                   (= editor (get-in @repls [project-name :host-input-editor]))))
-      (when (>= (get-in @repls [project-name :current-history-index]) 0)
-        (swap! repls update project-name #(update % :current-history-index dec)))
-      (if (> 0 (get-in @repls [project-name :current-history-index]))
-        (.setText editor "")
-        (show-current-history project-name editor)))))
+      (let [{:keys [current-history-index host-hidden-editor guest-hidden-editor]} (get @repls project-name)
+            hidden-editor (or host-hidden-editor guest-hidden-editor)]
+        (when (>= (get-in @repls [project-name :current-history-index]) 0)
+          (hidden-editor/replace-hidden-state hidden-editor :current-history-index (dec current-history-index)))))))
 
 (defn ^:private add-commands
   "Exports commands and makes them available in Atom. Exported commands also

@@ -7,11 +7,13 @@
             [clojure-party-repl.common :as common :refer [repls
                                                           state
                                                           close-editor
+                                                          show-current-history
                                                           add-subscription
                                                           console-log]]))
 
 (def node-atom (node/require "atom"))
-(def Point (.-Point node-atom))
+(def AtomPoint (.-Point node-atom))
+(def AtomRange (.-Range node-atom))
 
 (def resize-handle-tag-name "ATOM-PANE-RESIZE-HANDLE")
 
@@ -21,11 +23,14 @@
 (defn decode-base64 [text]
   (base64/decodeString (trim-newline text)))
 
-(def state-types #{:repl-history
-                   :execution-code})
+(def initial-state {:repl-history ""
+                    :current-history-index ""
+                    :execution-code ""})
+
+(def state-types (set (keys initial-state)))
 
 (defn find-state-type-for-row
-  "Returns the state type for the buffer change. "
+  "Returns the state type for the buffer change."
   [hidden-editor row-number]
   (when (< 0 row-number)
     (loop [row (dec row-number)]
@@ -79,31 +84,40 @@
       (set! (.-id handle-element) "hidden-resize-handle"))))
 
 (defn ^:private initialize-hidden-state [hidden-editor]
-  (doseq [state-type state-types]
-    (.insertText hidden-editor (str state-type "\n\n"))))
+  (doseq [[state-type initial-value] initial-state]
+    (.insertText hidden-editor (str state-type "\n" initial-value "\n"))))
 
 (defn get-all-repl-history [hidden-editor]
   )
 
-(defn ^:private add-change-when-repl-history
+(defn ^:private update-current-history-index [project-name hidden-editor change]
+  (let [new-index (js/parseInt (decode-base64 (.-newText change)))]
+    (console-log "Updating local current history index to" new-index)
+    (swap! repls assoc-in [project-name :current-history-index] new-index)
+    (when-let [host-input-editor (get-in @repls [project-name :host-input-editor])]
+      (show-current-history project-name host-input-editor))))
+
+(defn ^:private update-repl-history
   "Adds the code to the repl history stored in the local state if the change is
   related to it."
   [project-name hidden-editor change]
-  (when (and (.-newRange change) (.-newText change))
-    (let [row (.-row (.-start (.-newRange change)))
-          state-type (find-state-type-for-row hidden-editor row)]
-      (console-log "Change is for" state-type (.-newText change))
-      (when (= state-type :repl-history)
-        (let [code (decode-base64 (.-newText change))]
-          (swap! repls update-in [project-name :repl-history] #(conj % code))
-          (swap! repls update project-name #(assoc % :current-history-index -1)))))))
+  (let [code (decode-base64 (.-newText change))]
+    (swap! repls update-in [project-name :repl-history] #(conj % code))))
 
-(defn ^:private update-local-history-state
+(def change-callbacks {:repl-history update-repl-history
+                       :current-history-index update-current-history-index})
+
+(defn ^:private update-local-state
   ""
   [project-name hidden-editor changes]
   (console-log "Hidden editor changes" changes)
   (doseq [change changes]
-    (add-change-when-repl-history project-name hidden-editor change)))
+    (when (and (.-newRange change) (.-newText change))
+      (let [row (.-row (.-start (.-newRange change)))
+            state-type (find-state-type-for-row hidden-editor row)]
+        (console-log "Change is for" state-type (.-newText change))
+        (when-let [callback (get change-callbacks state-type)]
+          (callback project-name hidden-editor change))))))
 
 (defn add-change-listener
   "Watches for any changes and takes action accordingly."
@@ -111,7 +125,7 @@
   (add-subscription project-name
                     (.onDidStopChanging hidden-editor
                                         (fn [event]
-                                          (update-local-history-state project-name hidden-editor (.-changes event))))))
+                                          (update-local-state project-name hidden-editor (.-changes event))))))
 
 (defn open-in-hidden-pane [hidden-editor & {:keys [moved?]}]
   (let [hidden-pane (get @state :hidden-pane)]
@@ -139,29 +153,39 @@
   (when-let [hidden-editor (get-in @repls [project-name type])]
     (swap! state update :hidden-editors #(disj % hidden-editor))))
 
-(defn delete-row [hidden-editor row]
+(defn ^:private delete-row [hidden-editor row]
   (.deleteRow (.getBuffer hidden-editor) row))
 
-(defn insert-text-at-row
+(defn ^:private replace-text-in-range [hidden-editor range text]
+  (.setTextInBufferRange hidden-editor range text (js-obj "bypassReadOnly" true)))
+
+(defn ^:private replace-text-at-row [hidden-editor row text]
+  (replace-text-in-range hidden-editor
+                        (AtomRange. (AtomPoint. row 0) (AtomPoint. row js/Number.POSITIVE_INFINITY))
+                        (encode-base64 text)))
+
+(defn ^:private insert-text-at-row
   "Inserts text in the hidden editor at the row by moving the cursor to the row
   and then inserting text."
-  [hidden-editor text row]
-  (.insert (.getBuffer hidden-editor)
-           (Point. row 0)
-           (str (encode-base64 text) "\n")
-           (js-obj "bypassReadOnly" true)))
-  ;(doto hidden-editor
-  ;  (.setCursorBufferPosition (array row 0) (js-obj "autoscroll" false))
-  ;  (.insertText text (js-obj "bypassReadOnly" true))))
+  [hidden-editor row text]
+  (replace-text-in-range hidden-editor
+                        (AtomRange. (AtomPoint. row 0) (AtomPoint. row 0))
+                        (str (encode-base64 text) "\n")))
 
-(defn update-hidden-state [hidden-editor state-type text]
+(defn insert-hidden-state [hidden-editor state-type text]
   (let [row (find-first-row-for-state-type hidden-editor state-type)]
     (console-log "Inserting in hidden state at row" row)
-    (insert-text-at-row hidden-editor text row)))
+    (insert-text-at-row hidden-editor row text)))
+
+(defn replace-hidden-state [hidden-editor state-type text]
+  (let [row (find-first-row-for-state-type hidden-editor state-type)]
+    (console-log "Inserting in hidden state at row" row)
+    (replace-text-at-row hidden-editor row text)))
 
 (defn add-repl-history [project-name code]
   (let [hidden-editor (get-in @repls [project-name :host-hidden-editor])]
-    (update-hidden-state hidden-editor :repl-history code)))
+    (insert-hidden-state hidden-editor :repl-history code)
+    (replace-hidden-state hidden-editor :current-history-index -1)))
 
 (defn ^:private add-dummy-editor [hidden-pane]
   (let [dummy-editor (create-hidden-editor)]
@@ -179,8 +203,6 @@
     (.destroy hidden-pane)
     (swap! state assoc :hidden-pane nil)))
 
-;; TODO: When Atom starts/reloads, it always opens the Project View to
-;;       the left now. Investigate it!
 (defn create-hidden-pane
   "Creates a new Pane to the very left of the PaneContainer. Since Atom will
   always have at least one Pane, even when you haven't opened a file,
