@@ -8,6 +8,7 @@
                                                           show-error
                                                           repls
                                                           visible-repl?]]
+            [clojure-party-repl.hidden-editor :as hidden-editor]
             [cljs.core.async :as async :refer [timeout <!]])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
@@ -56,8 +57,14 @@
               namespace))
           namespaces)))
 
-;; TODO: When both host and guest input editors exist and are visible,
-;;       ask the user with a pop up which one to use.
+(defn ^:private execute-on-guest [project-name code]
+  (let [{:keys [guest-input-editor guest-hidden-editor]} (get @repls project-name)]
+    (when guest-hidden-editor
+      (hidden-editor/insert-hidden-state guest-hidden-editor
+                                         :execution-code
+                                         code))
+    (append-to-editor guest-input-editor code :add-newline? false)))
+
 (defn execute-on-host-or-guest
   "Execute code on the editor that exists and is visible when there're both
   host and guest REPLs, otherwise, execute code on the editor that exists."
@@ -69,9 +76,7 @@
                     #(some? (get-in @repls [%2 %1])))]
     (condp find-repl project-name
       :host-input-editor (execute project-name code options)
-      :guest-input-editor (append-to-editor (get-in @repls [project-name :guest-input-editor])
-                                            (str code execute-comment)
-                                            :add-newline? false)
+      :guest-input-editor (execute-on-guest project-name code)
       (show-error "No running REPL or the REPL isn't visible for the project: " project-name))))
 
 (defn flash-range
@@ -92,9 +97,11 @@
         namespace (find-namespace-for-range editor range)
         code (.getSelectedText editor)]
     (flash-range editor range)
-    (execute-on-host-or-guest project-name code {:namespace namespace
-                                                 :line (.-row (.-start range))
-                                                 :column (.-column (.-start range))})))
+    (execute-on-host-or-guest project-name
+                              code
+                              {:namespace namespace
+                               :line (.-row (.-start range))
+                               :column (.-column (.-start range))})))
 
 (defn find-range-with-cursor
   "Searches for a range that cursor is located at."
@@ -140,15 +147,16 @@
       (let [namespace (find-namespace-for-range editor range)
             code (string/trim (.getTextInBufferRange editor range))]
         (flash-range editor range)
-        (execute-on-host-or-guest project-name code {:namespace namespace
-                                                     :line (.-row (.-start range))
-                                                     :column (.-column (.-start range))})))))
+        (execute-on-host-or-guest project-name
+                                  code
+                                  {:namespace namespace
+                                   :line (.-row (.-start range))
+                                   :column (.-column (.-start range))})))))
 
 (defn execute-entered-text
   "Gets the text in the input editor and sends it over to repl."
   [project-name editor]
-  (let [buffer (.getBuffer editor)
-        text (string/trim (.getText buffer))
+  (let [text (string/trim (.getText editor))
         code (if (string/ends-with? text execute-comment)
                (string/trim (subs text 0 (- (count text) (count execute-comment))))
                text)]
@@ -156,10 +164,13 @@
     (.setText editor "")))
 
 (defn prepare-to-execute
-  "The execute-comment is entered, only by the guest side, to signal the host
+  "Updates the hidden state, only by the guest side, to signal the host
   side to execute the code."
-  [guest-input-editor]
-  (append-to-editor guest-input-editor execute-comment :add-newline? false))
+  [project-name guest-input-editor]
+  (when-let [hidden-editor (get-in @repls [project-name :guest-hidden-editor])]
+    (hidden-editor/insert-hidden-state hidden-editor
+                                       :execution-code
+                                       (string/trim (.getText guest-input-editor)))))
 
 (defn send-to-repl
   "Grabs text from the appropriate editor, depending on the context and sends
@@ -178,7 +189,7 @@
   (when-let [editor (.getActiveTextEditor (.-workspace js/atom))]
     (if-let [project-name (common/get-project-name-from-input-editor editor)]
       (cond
-        (= editor (get-in @repls [project-name :guest-input-editor])) (prepare-to-execute editor)
+        (= editor (get-in @repls [project-name :guest-input-editor])) (prepare-to-execute project-name editor)
         (= editor (get-in @repls [project-name :host-input-editor])) (execute-entered-text project-name editor)
         :else (show-error "There's no running repl for the project: " project-name))
       (if-let [project-name (or (common/get-project-name-from-text-editor editor)

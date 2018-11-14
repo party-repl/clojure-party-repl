@@ -64,6 +64,7 @@
   [event]
   (let [editor (.getActiveTextEditor (.-workspace js/atom))
         project-name (get-project-name-from-input-editor editor)]
+    (console-log "Show older history for" project-name)
     (when (and project-name
               (or (= editor (get-in @repls [project-name :guest-input-editor]))
                   (= editor (get-in @repls [project-name :host-input-editor]))))

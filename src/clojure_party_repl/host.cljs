@@ -10,6 +10,7 @@
             [clojure-party-repl.common :as common :refer [add-subscription
                                                           destroy-editor
                                                           dispose-project-if-empty
+                                                          decode-base64
                                                           console-log
                                                           repls
                                                           state]]
@@ -57,6 +58,13 @@
                 (swap! repls update project-name #(assoc % :host-output-editor editor))
                 (.setPlaceholderText editor output-editor-placeholder)
                 (add-subscription project-name
+                                  (.onDidChangeActiveTextEditor (.-workspace js/atom)
+                                                                (fn [active-editor]
+                                                                  (when (and (= active-editor editor)
+                                                                             (common/new-guest-detected? project-name))
+                                                                    (activate-editor project-name :host-hidden-editor)
+                                                                    (activate-editor project-name :host-output-editor)))))
+                (add-subscription project-name
                                   (.onDidDestroy editor (fn [event]
                                                           (swap! repls update project-name #(assoc % :host-output-editor nil))
                                                           (repl/stop-process project-name)
@@ -92,19 +100,25 @@
                                                                     (activate-editor project-name :host-hidden-editor)
                                                                     (activate-editor project-name :host-input-editor)))))
                 (add-subscription project-name
-                                  (.onDidStopChanging editor (fn [event]
-                                                               (let [buffer (.getBuffer editor)
-                                                                     non-blank-row (find-non-blank-last-row buffer)
-                                                                     last-text (.lineForRow buffer non-blank-row)]
-                                                                  (when (ends-with? (trim last-text) execute-comment)
-                                                                    (.deleteRows buffer (inc non-blank-row) (inc (.getLastRow buffer)))
-                                                                    (execution/execute-entered-text project-name editor))))))
-                (add-subscription project-name
                                   (.onDidDestroy editor (fn [event]
                                                           (swap! repls update project-name #(assoc % :host-input-editor nil))
                                                           (repl/stop-process project-name)
                                                           (dispose project-name)
                                                           (dispose-project-if-empty project-name))))))))
+
+(defn update-execute-code
+  ""
+  [project-name hidden-editor change]
+  (when-let [host-input-editor (get-in @repls [project-name :host-input-editor])]
+    (let [code (decode-base64 (.getTextInBufferRange hidden-editor (.-oldRange change)))
+          entered-code (.getText host-input-editor)]
+      (console-log "Executing code" code entered-code)
+      (when (= code entered-code)
+        (execution/execute-entered-text project-name host-input-editor)))))
+
+(def change-callbacks {:repl-history common/update-repl-history
+                       :current-history-index common/update-current-history-index
+                       :execution-code update-execute-code})
 
 (defn ^:private create-hidden-editor
   "Adds a text editor in the hidden pane. We need to keep the reference to
@@ -118,11 +132,16 @@
     (swap! repls update project-name #(assoc % :host-hidden-editor hidden-editor))
     (.setPath (.getBuffer hidden-editor) path)
     (hidden-editor/open-in-hidden-pane hidden-editor)
-    (hidden-editor/add-change-listener project-name hidden-editor)))
+    (add-subscription project-name
+                      (.onDidChange (.getBuffer hidden-editor)
+                                    (fn [event]
+                                      (hidden-editor/update-local-state project-name
+                                                                        hidden-editor
+                                                                        (.-changes event)
+                                                                        change-callbacks))))))
 
 ;; TODO: Make sure to create input editor after output editor has been created.
 (defn create-editors [project-name]
   (create-output-editor project-name)
   (create-input-editor project-name)
-  (create-hidden-editor project-name)
-  )
+  (create-hidden-editor project-name))

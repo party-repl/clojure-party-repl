@@ -11,8 +11,7 @@
                                                           repls
                                                           state
                                                           console-log]]
-            [clojure-party-repl.hidden-editor :refer [open-in-hidden-pane
-                                                      add-change-listener]]))
+            [clojure-party-repl.hidden-editor :as hidden-editor]))
 
 (defn ^:private find-project-name-from-title [editor subtitle]
   (let [title (.getTitle editor)
@@ -70,11 +69,15 @@
     (when-not (get @repls project-name)
       (add-repl project-name))
     (swap! repls update project-name #(assoc % :guest-input-editor editor))
+    (.add (.-classList (.-element editor)) "repl-entry")
     (add-subscription project-name
                       (.onDidDestroy editor
                                     (fn [event]
                                       (swap! repls update project-name #(assoc % :guest-input-editor nil))
                                       (dispose-project-if-empty project-name))))))
+
+(def change-callbacks {:repl-history common/update-repl-history
+                       :current-history-index common/update-current-history-index})
 
 (defn ^:private link-hidden-editor
   "Keeps the reference to the hidden editor associated with the project name
@@ -84,8 +87,14 @@
     (when-not (get @repls project-name)
       (add-repl project-name))
     (swap! repls update project-name #(assoc % :guest-hidden-editor editor))
-    (open-in-hidden-pane editor :moved? true)
-    (add-change-listener project-name editor)
+    (hidden-editor/open-in-hidden-pane editor :moved? true)
+    (add-subscription project-name
+                      (.onDidChange (.getBuffer editor)
+                                    (fn [event]
+                                      (hidden-editor/update-local-state project-name
+                                                                        editor
+                                                                        (.-changes event)
+                                                                        change-callbacks))))
     (add-subscription project-name
                       (.onDidDestroy editor
                                     (fn [event]

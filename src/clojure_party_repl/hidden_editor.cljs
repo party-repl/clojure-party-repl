@@ -1,6 +1,5 @@
 (ns clojure-party-repl.hidden-editor
   (:require [clojure.string :refer [trim-newline]]
-            [goog.crypt.base64 :as base64]
             [cljs.nodejs :as node]
             [cljs.reader :refer [read-string]]
             [clojure-party-repl.strings :refer [hidden-editor-title]]
@@ -8,6 +7,7 @@
                                                           state
                                                           close-editor
                                                           show-current-history
+                                                          encode-base64
                                                           add-subscription
                                                           console-log]]))
 
@@ -16,12 +16,6 @@
 (def AtomRange (.-Range node-atom))
 
 (def resize-handle-tag-name "ATOM-PANE-RESIZE-HANDLE")
-
-(defn encode-base64 [text]
-  (base64/encodeString text))
-
-(defn decode-base64 [text]
-  (base64/decodeString (trim-newline text)))
 
 (def initial-state {:repl-history ""
                     :current-history-index ""
@@ -47,7 +41,6 @@
   (let [end-row (.-row (.getEndPosition (.getBuffer hidden-editor)))]
     (loop [row 0]
       (let [text-in-line (read-string (trim-newline (.lineTextForBufferRow hidden-editor row)))]
-        (console-log "Searching for state" state-type text-in-line)
         (if (= state-type text-in-line)
           (inc row)
           (when (< row end-row)
@@ -87,45 +80,17 @@
   (doseq [[state-type initial-value] initial-state]
     (.insertText hidden-editor (str state-type "\n" initial-value "\n"))))
 
-(defn get-all-repl-history [hidden-editor]
-  )
-
-(defn ^:private update-current-history-index [project-name hidden-editor change]
-  (let [new-index (js/parseInt (decode-base64 (.-newText change)))]
-    (console-log "Updating local current history index to" new-index)
-    (swap! repls assoc-in [project-name :current-history-index] new-index)
-    (when-let [host-input-editor (get-in @repls [project-name :host-input-editor])]
-      (show-current-history project-name host-input-editor))))
-
-(defn ^:private update-repl-history
-  "Adds the code to the repl history stored in the local state if the change is
-  related to it."
-  [project-name hidden-editor change]
-  (let [code (decode-base64 (.-newText change))]
-    (swap! repls update-in [project-name :repl-history] #(conj % code))))
-
-(def change-callbacks {:repl-history update-repl-history
-                       :current-history-index update-current-history-index})
-
-(defn ^:private update-local-state
-  ""
-  [project-name hidden-editor changes]
+(defn update-local-state
+  "Finds the state type for each change and calls an appropriate callback for it."
+  [project-name hidden-editor changes change-callbacks]
   (console-log "Hidden editor changes" changes)
   (doseq [change changes]
-    (when (and (.-newRange change) (.-newText change))
+    (when (or (.-newRange change) (.-newText change))
       (let [row (.-row (.-start (.-newRange change)))
             state-type (find-state-type-for-row hidden-editor row)]
         (console-log "Change is for" state-type (.-newText change))
         (when-let [callback (get change-callbacks state-type)]
           (callback project-name hidden-editor change))))))
-
-(defn add-change-listener
-  "Watches for any changes and takes action accordingly."
-  [project-name hidden-editor]
-  (add-subscription project-name
-                    (.onDidStopChanging hidden-editor
-                                        (fn [event]
-                                          (update-local-state project-name hidden-editor (.-changes event))))))
 
 (defn open-in-hidden-pane [hidden-editor & {:keys [moved?]}]
   (let [hidden-pane (get @state :hidden-pane)]
@@ -168,14 +133,15 @@
   "Inserts text in the hidden editor at the row by moving the cursor to the row
   and then inserting text."
   [hidden-editor row text]
+  (console-log "Inserting in hidden state at row" row text)
   (replace-text-in-range hidden-editor
                         (AtomRange. (AtomPoint. row 0) (AtomPoint. row 0))
                         (str (encode-base64 text) "\n")))
 
 (defn insert-hidden-state [hidden-editor state-type text]
-  (let [row (find-first-row-for-state-type hidden-editor state-type)]
-    (console-log "Inserting in hidden state at row" row)
-    (insert-text-at-row hidden-editor row text)))
+  (if-let [row (find-first-row-for-state-type hidden-editor state-type)]
+    (insert-text-at-row hidden-editor row text)
+    (console-log "WARNING:" "State type does not exist in hidden editor" state-type)))
 
 (defn replace-hidden-state [hidden-editor state-type text]
   (let [row (find-first-row-for-state-type hidden-editor state-type)]

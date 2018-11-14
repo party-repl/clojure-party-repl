@@ -1,7 +1,9 @@
 (ns clojure-party-repl.common
   (:require [cljs.nodejs :as node]
             [cljs.pprint :refer [pprint]]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [clojure.set :as set]
+            [goog.crypt.base64 :as base64]))
 
 (def node-atom (node/require "atom"))
 (def fs (node/require "fs"))
@@ -32,7 +34,7 @@
    :guest-input-editor nil
    :guest-output-editor nil
    :guest-hidden-editor nil
-   :connected-guest-count 0
+   :connected-guests #{}
    :repl-history (list)
    :current-history-index -1})
 
@@ -67,8 +69,13 @@
   [project-name disposable]
   (.add (get-in @repls [project-name :subscriptions]) disposable))
 
-(defn count-connected-guest
-  "Returns a number of guests connected by Teletype or nil. Teletype injects
+(defn ^:private get-site-id [site-positions-component-site]
+  (let [class-name (.-className site-positions-component-site)]
+    (when-let [site-id (re-find #"\d+" class-name)]
+      site-id)))
+
+(defn ^:private get-connected-guests
+  "Returns a set of guests' id's connected by Teletype or nil. Teletype injects
   a DOM element with a classname SitePositionsComponent inside the TextEditor
   when it's active or focused.
 
@@ -81,34 +88,34 @@
         active-pane-item (.getActivePaneItem (.-workspace js/atom))
         active-editor (some #(when (= active-pane-item %) %) [host-input-editor host-output-editor])]
     (when active-editor
-      (console-log "Active Editor Element:" (.-element active-editor))
       (let [children (.-children (.-element active-editor))
             site-positions-component (some #(when (.contains (.-classList %) "SitePositionsComponent") %) (array-seq children))]
+        (console-log "Checking new guests:" site-positions-component)
         (when site-positions-component
           (console-log "Avatars:" site-positions-component)
-          (.-length (.-children site-positions-component)))))))
+          (set (map get-site-id (array-seq (.-children site-positions-component)))))))))
 
-(defn update-connected-guest [project-name count]
-  (swap! repls update project-name #(assoc % :connected-guest-count count)))
-
-(defn new-guest-detected? [project-name]
-  (if-let [new-count (count-connected-guest project-name)]
-    (let [current-count (get-in @repls [project-name :connected-guest-count])]
-      (console-log "Guest Count:" current-count "=>" new-count)
-      (cond
-        (= new-count current-count)
-        false
-
-        (< new-count current-count)
-        (do
-          (update-connected-guest project-name new-count)
-          false)
-
-        (> new-count current-count)
-        (do
-          (update-connected-guest project-name new-count)
-          true)))
+(defn new-guest-detected?
+  "Returns true if connected guests contain a site-id that doesn't exist in the current
+  guests."
+  [project-name]
+  (if-let [connected-guests (get-connected-guests project-name)]
+    (let [current-guests (get-in @repls [project-name :connected-guests])
+          detected-new-guests (set/difference connected-guests current-guests)]
+      (console-log "Guest Count:" current-guests "=>" connected-guests)
+      (when-not (empty? detected-new-guests)
+        (swap! repls update-in [project-name :connected-guests] #(set/union % detected-new-guests))
+        true))
     false))
+
+(defn encode-base64 [text]
+  (base64/encodeString text))
+
+(defn decode-base64 [text]
+  (try
+    (base64/decodeString (string/trim-newline text))
+    (catch js/Error e
+      (console-log "ERROR Could not decode because not encoded in base64" text))))
 
 (defn show-current-history
   "Replaces the content of the input-editor with one of the executed commands in
@@ -122,6 +129,24 @@
         (.setText editor
                   (nth (get-in @repls [project-name :repl-history])
                        current-history-index))))))
+
+(defn update-current-history-index
+  "Updates the current history index to the new value locally. When on host,
+  replaces the content of the input editor with the code in the repl history
+  at the index."
+  [project-name hidden-editor change]
+  (let [new-index (js/parseInt (decode-base64 (.getTextInBufferRange hidden-editor (.-oldRange change))))]
+    (console-log "Updating local current history index to" new-index)
+    (swap! repls assoc-in [project-name :current-history-index] new-index)
+    (when-let [host-input-editor (get-in @repls [project-name :host-input-editor])]
+      (show-current-history project-name host-input-editor))))
+
+(defn update-repl-history
+  "Adds the code to the repl history in the local state."
+  [project-name hidden-editor change]
+  (let [code (decode-base64 (.getTextInBufferRange hidden-editor (.-oldRange change)))]
+    (console-log "Adding into local history" code)
+    (swap! repls update-in [project-name :repl-history] #(conj % code))))
 
 ;; TODO: Warn user when project.clj doesn't exist in the project.
 (defn get-project-clj [project-path]
