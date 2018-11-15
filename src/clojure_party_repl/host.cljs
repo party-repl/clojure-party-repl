@@ -1,5 +1,6 @@
 (ns clojure-party-repl.host
-  (:require [clojure.string :refer [ends-with? trim replace]]
+  (:require [clojure.string :refer [ends-with? trim replace trim-newline]]
+            [cljs.core.async :as async :refer [timeout <!]]
             [clojure-party-repl.repl :as repl]
             [clojure-party-repl.execution :as execution]
             [clojure-party-repl.strings :refer [output-editor-title
@@ -14,7 +15,8 @@
                                                           console-log
                                                           repls
                                                           state]]
-            [clojure-party-repl.hidden-editor :as hidden-editor]))
+            [clojure-party-repl.hidden-editor :as hidden-editor])
+  (:require-macros [cljs.core.async.macros :refer [go]]))
 
 ;; TODO: Combine the output editor and input editor into a single paneItem.
 
@@ -107,14 +109,29 @@
                                                           (dispose-project-if-empty project-name))))))))
 
 (defn update-execute-code
-  ""
+  "Executes the code when the hidden state and the entered code is the same.
+
+  NOTE: Timeout is necessary before actually executing code because of unknown
+        timing Teletype error:
+          Uncaught (in promise) Error: No segment found at DocumentTree.findSegmentContainingPosition
+          Document.findSegment
+          Document.updateMarkers
+          EditorProxy.updateSelections
+          EditorBinding.updateSelections
+          Marker.update
+          Marker.emitChangeEvent
+          TextBuffer.emitMarkerChangeEvents
+          TextBuffer.transact
+          TextBuffer.setTextInRange"
   [project-name hidden-editor change]
   (when-let [host-input-editor (get-in @repls [project-name :host-input-editor])]
-    (let [code (decode-base64 (.getTextInBufferRange hidden-editor (.-oldRange change)))
+    (let [code (decode-base64 (trim-newline (.-newText change)))
           entered-code (.getText host-input-editor)]
       (console-log "Executing code" code entered-code)
       (when (= code entered-code)
-        (execution/execute-entered-text project-name host-input-editor)))))
+        (go
+          (<! (timeout 100))
+          (execution/execute-entered-text project-name host-input-editor))))))
 
 (def change-callbacks {:repl-history common/update-repl-history
                        :current-history-index common/update-current-history-index

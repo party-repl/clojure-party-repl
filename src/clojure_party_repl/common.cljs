@@ -135,7 +135,7 @@
   replaces the content of the input editor with the code in the repl history
   at the index."
   [project-name hidden-editor change]
-  (let [new-index (js/parseInt (decode-base64 (.getTextInBufferRange hidden-editor (.-oldRange change))))]
+  (let [new-index (js/parseInt (decode-base64 (string/trim-newline (.-newText change))))]
     (console-log "Updating local current history index to" new-index)
     (swap! repls assoc-in [project-name :current-history-index] new-index)
     (when-let [host-input-editor (get-in @repls [project-name :host-input-editor])]
@@ -144,7 +144,7 @@
 (defn update-repl-history
   "Adds the code to the repl history in the local state."
   [project-name hidden-editor change]
-  (let [code (decode-base64 (.getTextInBufferRange hidden-editor (.-oldRange change)))]
+  (let [code (decode-base64 (string/trim-newline (.-newText change)))]
     (console-log "Adding into local history" code)
     (swap! repls update-in [project-name :repl-history] #(conj % code))))
 

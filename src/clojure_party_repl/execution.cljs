@@ -1,6 +1,7 @@
 (ns clojure-party-repl.execution
   (:require [clojure.string :as string]
             [cljs.nodejs :as node]
+            [cljs.core.async :as async :refer [timeout <!]]
             [clojure-party-repl.repl :as repl]
             [clojure-party-repl.strings :refer [execute-comment]]
             [clojure-party-repl.common :as common :refer [append-to-editor
@@ -8,8 +9,7 @@
                                                           show-error
                                                           repls
                                                           visible-repl?]]
-            [clojure-party-repl.hidden-editor :as hidden-editor]
-            [cljs.core.async :as async :refer [timeout <!]])
+            [clojure-party-repl.hidden-editor :as hidden-editor])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (def node-atom (node/require "atom"))

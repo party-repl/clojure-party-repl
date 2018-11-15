@@ -76,9 +76,13 @@
     (when (= resize-handle-tag-name (.-tagName handle-element))
       (set! (.-id handle-element) "hidden-resize-handle"))))
 
+(defn join-text [text [state-type initial-value]]
+  (str text state-type "\n" initial-value "\n"))
+
 (defn ^:private initialize-hidden-state [hidden-editor]
-  (doseq [[state-type initial-value] initial-state]
-    (.insertText hidden-editor (str state-type "\n" initial-value "\n"))))
+  (let [final-text (reduce join-text "" initial-state)]
+    (console-log "Initial State:" final-text)
+    (.setText hidden-editor final-text)))
 
 (defn update-local-state
   "Finds the state type for each change and calls an appropriate callback for it."
