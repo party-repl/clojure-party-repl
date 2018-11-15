@@ -59,11 +59,11 @@
 
 (defn ^:private execute-on-guest [project-name code]
   (let [{:keys [guest-input-editor guest-hidden-editor]} (get @repls project-name)]
+    (append-to-editor guest-input-editor code :add-newline? false)
     (when guest-hidden-editor
       (hidden-editor/insert-hidden-state guest-hidden-editor
                                          :execution-code
-                                         code))
-    (append-to-editor guest-input-editor code :add-newline? false)))
+                                         code))))
 
 (defn execute-on-host-or-guest
   "Execute code on the editor that exists and is visible when there're both

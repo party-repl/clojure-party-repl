@@ -7,6 +7,7 @@
             [clojure-party-repl.common :as common :refer [add-subscription
                                                           destroy-editor
                                                           dispose-project-if-empty
+                                                          decode-base64
                                                           add-repl
                                                           repls
                                                           state
@@ -79,6 +80,22 @@
 (def change-callbacks {:repl-history common/update-repl-history
                        :current-history-index common/update-current-history-index})
 
+(defn get-all-repl-history [hidden-editor first-row]
+  (loop [row first-row
+         reversed-history (list)]
+    (let [text (string/trim-newline (.lineTextForBufferRow hidden-editor row))]
+      (if-not (or (string/starts-with? text ":")
+                  (empty? text))
+        (recur (inc row) (conj reversed-history (decode-base64 text)))
+        reversed-history))))
+
+(defn sync-all-repl-history [project-name hidden-editor]
+  (let [first-row (hidden-editor/find-first-row-for-state-type hidden-editor :repl-history)
+        reversed-history (get-all-repl-history hidden-editor first-row)]
+    (console-log "Syncing repl history:" reversed-history)
+    (doseq [code reversed-history]
+      (swap! repls update-in [project-name :repl-history] #(conj % code)))))
+
 (defn ^:private link-hidden-editor
   "Keeps the reference to the hidden editor associated with the project name
   and moves the editor to the hidden pane."
@@ -88,6 +105,7 @@
       (add-repl project-name))
     (swap! repls update project-name #(assoc % :guest-hidden-editor editor))
     (hidden-editor/open-in-hidden-pane editor :moved? true)
+    (sync-all-repl-history project-name editor)
     (add-subscription project-name
                       (.onDidChange (.getBuffer editor)
                                     (fn [event]
