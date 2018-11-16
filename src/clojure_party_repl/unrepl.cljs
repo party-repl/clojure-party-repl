@@ -134,6 +134,13 @@
                                   "class" "clojure-party-repl elisions"))
     (swap! repls update-in [project-name :connection] #(assoc % :elision-marker-layer marker-layer))))
 
+(defn ^:private remove-interrupt [project-name group-id]
+  (console-log "Check interrupt id:" group-id (get-in @repls [project-name :connection :pending-id]))
+  (when (= group-id (get-in @repls [project-name :connection :pending-id]))
+    (console-log "Removing interrupt info")
+    (swap! repls update-in [project-name :connection] #(assoc % :pending-id nil))
+    (swap! repls update-in [project-name :connection] #(assoc % :interrupt nil))))
+
 (defmulti handle-unrepl-tuple
   (fn [project-name tuple]
     (if-not (vector? tuple)
@@ -152,13 +159,15 @@
 
 (defmethod handle-unrepl-tuple :started-eval [project-name [tag payload group-id :as tuple]]
   (let [{{:keys [interrupt background]} :actions} payload]
-    (console-log "Noop unrepl tuple:" (pr-str tuple))))
+    (swap! repls update-in [project-name :connection] #(assoc % :pending-id group-id))
+    (swap! repls update-in [project-name :connection] #(assoc % :interrupt interrupt))))
 
 ;; TODO: Handle elision expansion for exception too.
 ;; NOTE: For string payload, it adds unnecessary space from joining the string
 ;;       when the prefix doesn't end with a whitespace and the expanded string
 ;;       doesn't start with a whitespace.
 (defmethod handle-unrepl-tuple :eval [project-name [tag payload group-id]]
+  (remove-interrupt project-name group-id)
   (if-let [elision-range (get-in @repls [project-name :connection :pending-elision-range])]
     (if (or (seq? payload) (vector? payload) (set? payload))
       (repl/append-to-output-editor-at project-name (apply pr-str payload) elision-range :add-newline? false)
@@ -169,7 +178,13 @@
                                                           (subs (str payload) 1)
                                                           (str payload))
                                                         elision-range :add-newline? false))))
-    (repl/append-to-output-editor project-name (pr-str payload) :add-newline? true)))
+      (repl/append-to-output-editor project-name (pr-str payload) :add-newline? true)))
+
+(defmethod handle-unrepl-tuple :interrupted [project-name [tag _ group-id :as tuple]]
+  (remove-interrupt project-name group-id))
+
+(defmethod handle-unrepl-tuple :bg-eval [project-name [tag payload group-id :as tuple]]
+  (console-log "Noop unrepl tuple:" (pr-str tuple)))
 
 (defmethod handle-unrepl-tuple :bye [project-name [tag payload :as tuple]]
   (let [{:keys [reason outs actions]} payload]
@@ -194,6 +209,7 @@
   (let [{:keys [ex phase]} payload
         {:keys [cause via trace]} ex
         [{:keys [type _ _]} _] via]
+    (remove-interrupt project-name group-id)
     (repl/append-to-output-editor project-name
                                   (string/join " " [type cause (-> trace
                                                             (get 0 [])
@@ -345,6 +361,13 @@
     (send socket-connection (if namespace
                               (wrap-code-with-namespace code namespace)
                               (str code "\n")))))
+
+(defmethod repl/interrupt-process :repl-type/unrepl
+  [project-name]
+  (let [connection (get-in @repls [project-name :connection])
+        {:keys [socket-connection interrupt pending-id]} connection]
+    (when (and interrupt pending-id)
+      (send socket-connection interrupt))))
 
 (defmethod repl/stop-process :repl-type/unrepl
   [project-name]
