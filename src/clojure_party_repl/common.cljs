@@ -69,6 +69,19 @@
   [project-name disposable]
   (.add (get-in @repls [project-name :subscriptions]) disposable))
 
+(defn add-buttons [project-name editor buttons]
+  (console-log "Adding action buttons:" buttons)
+  (let [editor-element (.-element editor)
+        button-container (doto (.createElement js/document "div")
+                               (.setAttribute "class" "button-container"))]
+    (doseq [[title callback] buttons]
+      (let [button (doto (.createElement js/document "button")
+                         (.setAttribute "class" title))]
+        (set! (.-innerText button) title)
+        (.appendChild button-container button)
+        (.addEventListener button "click" (partial callback project-name editor))))
+    (.appendChild editor-element button-container)))
+
 (defn ^:private get-site-id [site-positions-component-site]
   (let [class-name (.-className site-positions-component-site)]
     (when-let [site-id (re-find #"\d+" class-name)]

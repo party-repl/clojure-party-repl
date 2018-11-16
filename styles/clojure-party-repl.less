@@ -6,11 +6,9 @@
  */
 @import "ui-variables";
 
+/**  REPL Style  **/
+
 .clojure-party-repl {
-
-}
-
-.repl-entry {
 
 }
 
@@ -18,8 +16,32 @@
 
 }
 
-.highlight.executed-top-level-form .region {
-    background-color: rgba(100, 148, 237, 0.6);
+atom-text-editor.repl-entry {
+    padding-top: 28px;
+}
+
+.repl-entry .button-container {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    height: 28px;
+    width: 100%;
+    padding: 2px 0px;
+    background-color: blue;
+}
+
+.repl-entry .button-container button {
+    float: right;
+    color: grey;
+    height: 24px;
+    margin-right: 2px;
+}
+
+.repl-entry .button-container button.back,
+.repl-entry .button-container button.forward {
+    float: left;
+    margin-left: 2px;
+    margin-right: 0px;
 }
 
 .highlight.clojure-party-repl.elisions .region {
@@ -27,6 +49,23 @@
     border-radius: 3px;
     cursor: pointer;
 }
+
+#hidden-resize-handle {
+    pointer-events: none;
+    cursor: default;
+}
+
+#clojure-party-repl-hidden-pane {
+    flex-grow: 0 !important;
+}
+
+/**  Text Editor Highlight Style  **/
+
+.highlight.executed-top-level-form .region {
+    background-color: rgba(100, 148, 237, 0.6);
+}
+
+/**  Connection Panel Style  **/
 
 .clojure-party-repl.container {
     padding-bottom: @component-padding;
@@ -45,13 +84,4 @@
 .clojure-party-repl.proceed-button {
     position: absolute;
     right: 0;
-}
-
-#hidden-resize-handle {
-    pointer-events: none;
-    cursor: default;
-}
-
-#clojure-party-repl-hidden-pane {
-    flex-grow: 0 !important;
 }

@@ -11,6 +11,7 @@
             [clojure-party-repl.common :as common :refer [add-subscription
                                                           destroy-editor
                                                           dispose-project-if-empty
+                                                          add-buttons
                                                           decode-base64
                                                           console-log
                                                           repls
@@ -73,11 +74,23 @@
                                                           (dispose project-name)
                                                           (dispose-project-if-empty project-name))))))))
 
-(defn find-non-blank-last-row [buffer]
-  (let [last-row (.getLastRow buffer)]
-    (if (.isRowBlank buffer last-row)
-      (.previousNonBlankRow buffer last-row)
-      last-row)))
+(defn prepare-older-repl-history [project-name editor]
+  (let [{:keys [current-history-index host-hidden-editor guest-hidden-editor]} (get @repls project-name)
+        hidden-editor (or host-hidden-editor guest-hidden-editor)]
+    (when (< current-history-index
+             (count (get-in @repls [project-name :repl-history])))
+      (hidden-editor/replace-hidden-state hidden-editor :current-history-index (inc current-history-index)))))
+
+(defn prepare-newer-repl-history [project-name editor]
+  (let [{:keys [current-history-index host-hidden-editor guest-hidden-editor]} (get @repls project-name)
+        hidden-editor (or host-hidden-editor guest-hidden-editor)]
+    (when (>= (get-in @repls [project-name :current-history-index]) 0)
+      (hidden-editor/replace-hidden-state hidden-editor :current-history-index (dec current-history-index)))))
+
+(def action-buttons {"execute" execution/execute-entered-text
+                     "back" prepare-older-repl-history
+                     "forward" prepare-newer-repl-history
+                     "cancel" repl/interrupt-process})
 
 ;; TODO: Set a placeholder text to notify user when repl is ready.
 (defn ^:private create-input-editor
@@ -94,6 +107,7 @@
                 (.add (.-classList (.-element editor)) "repl-entry")
                 (set-grammar editor)
                 (swap! repls update project-name #(assoc % :host-input-editor editor))
+                (add-buttons project-name editor action-buttons)
                 (add-subscription project-name
                                   (.onDidChangeActiveTextEditor (.-workspace js/atom)
                                                                 (fn [active-editor]

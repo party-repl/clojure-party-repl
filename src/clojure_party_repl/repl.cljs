@@ -43,7 +43,10 @@
 (defmethod stop-process :default [_]
   (fn []))
 
-(defn interrupt-process [])
+(defmulti interrupt-process
+  "Interrupts the most recent code execution."
+  (fn [project-name]
+    (get-in @repls [project-name :repl-type])))
 
 (defmulti execute-code
   "Appends the code to editor and sends it over to repl."

@@ -92,7 +92,8 @@
       (when-let [callback (get @(:callbacks connection) id)]
         (callback nil messages)
         (swap! (:queued-messages connection) dissoc id)
-        (swap! (:callbacks connection) dissoc id)))))
+        (swap! (:callbacks connection) dissoc id))
+        (reset! (:pending-id connection) nil))))
 
 (defn ^:private consume-all-data
   "Keeps reading data from the socket until it's been depleated. All data is
@@ -164,6 +165,7 @@
                                               :output-chan (chan)
                                               :queued-messages (atom {})
                                               :callbacks (atom {})
+                                              :pending-id (atom nil)
                                               :decode (atom {:position 0
                                                              :data nil
                                                              :encoding "utf8"}))]
@@ -211,11 +213,14 @@
   (let [wrapped-code (wrap-to-catch-exception code)
         {:keys [connection session current-ns]} (get @repls project-name)
         options {"session" session
-                 "ns" (or namespace current-ns)}]
+                 "ns" (or namespace current-ns)
+                 "id" (.-uuid (random-uuid))}]
     (repl/update-most-recent-repl project-name)
     (when-not resent?
       (repl/append-to-output-editor project-name code))
-    (add-repl-history project-name code)
+    (when-not (empty? code)
+      (add-repl-history project-name code))
+    (reset! (:pending-id connection) (get options "id"))
     (eval connection
           wrapped-code
           options
@@ -223,6 +228,20 @@
             (when (namespace-not-found? (last messages))
               (console-log "Resending code to the current namespace...")
               (repl/execute-code project-name code {:resent? true}))))))
+
+(defmethod repl/interrupt-process :repl-type/nrepl
+  [project-name]
+  (let [{:keys [connection session]} (get @repls project-name)
+        callback (fn [errors messages]
+                   (console-log "Successfully interrupted process" (.-status (:pending-id connection)) messages)
+                   (reset! (:pending-id connection) nil))]
+    (console-log "Interrupting pending process..." (.-state (:pending-id connection)))
+    (when (.-state (:pending-id connection))
+      (send connection
+            {"op" "interrupt"
+             "interrupt-id" (.-state (:pending-id connection))
+             "session" session}
+            callback))))
 
 (defn ^:private output-namespace
   "Outputs the current namespace for the project onto the output editor."
