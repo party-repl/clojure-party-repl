@@ -55,6 +55,7 @@
     (when-not (get @repls project-name)
       (add-repl project-name))
     (swap! repls update project-name #(assoc % :guest-output-editor editor))
+    (set! (.-readOnly editor) true)
     (add-subscription project-name
                       (.onDidDestroy editor
                                     (fn [event]

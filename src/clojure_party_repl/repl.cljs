@@ -14,9 +14,20 @@
 (defn update-most-recent-repl [project-name]
   (swap! state assoc :most-recent-repl-project-name project-name))
 
-(defn remove-placeholder-text [project-name]
+(defn remove-placeholder-text
+  "Removes the text from the placeholder element directly. We can't just
+  call editor.setPlaceholderText because the editor is read-only and doesn't
+  update the DOM."
+  [project-name]
   (when-let [output-editor (get-in @repls [project-name :host-output-editor])]
-    (.setPlaceholderText output-editor "")))
+    (let [placeholder-element (-> (.getElement output-editor)
+                                  (.getElementsByClassName "placeholder-text")
+                                  (aget 0))]
+      (set! (.-innerText placeholder-element) ""))))
+
+(defn set-output-editor-read-only [project-name]
+  (when-let [output-editor (get-in @repls [project-name :host-output-editor])]
+    (set! (.-readOnly output-editor) true)))
 
 (defn append-to-output-editor
   "Appends text at the end of the output editor."

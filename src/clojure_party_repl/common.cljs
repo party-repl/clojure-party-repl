@@ -133,13 +133,13 @@
 (defn show-current-history
   "Replaces the content of the input-editor with one of the executed commands in
   the history at the current history index."
-  [project-name editor]
+  [project-name input-editor]
   (let [current-history-index (get-in @repls [project-name :current-history-index])]
     (if (> 0 current-history-index)
-      (.setText editor "")
+      (.setText input-editor "")
       (when (> (count (get-in @repls [project-name :repl-history]))
                current-history-index)
-        (.setText editor
+        (.setText input-editor
                   (nth (get-in @repls [project-name :repl-history])
                        current-history-index))))))
 
@@ -281,7 +281,7 @@
                  output)]
       (.moveToBottom editor)
       (when (re-find #"^\s+$" (.getLastLine (.getBuffer editor)))
-        (.deleteToBeginningOfLine editor))
+        (.deleteToBeginningOfLine editor (js-obj "bypassReadOnly" true)))
       (.insertText editor text (js-obj "bypassReadOnly" true))
       (.scrollToBottom (.-element editor))
       (.moveToBottom editor))))

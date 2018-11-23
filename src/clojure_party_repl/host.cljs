@@ -54,6 +54,7 @@
       (.then (fn [editor]
                 (set! (.-isModified editor) (fn [] false))
                 (set! (.-isModified (.getBuffer editor)) (fn [] false))
+                (set! (.-readOnly editor) true)
                 (.setSoftWrapped editor true)
                 (.add (.-classList (.-element editor)) "repl-history")
                 (set-grammar editor)

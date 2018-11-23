@@ -155,13 +155,13 @@
 
 (defn execute-entered-text
   "Gets the text in the input editor and sends it over to repl."
-  [project-name editor]
-  (let [text (string/trim (.getText editor))
+  [project-name input-editor]
+  (let [text (string/trim (.getText input-editor))
         code (if (string/ends-with? text execute-comment)
                (string/trim (subs text 0 (- (count text) (count execute-comment))))
                text)]
     (execute project-name code)
-    (.setText editor "")))
+    (.setText input-editor "")))
 
 (defn prepare-to-execute
   "Updates the hidden state, only by the guest side, to signal the host

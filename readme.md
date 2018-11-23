@@ -9,6 +9,7 @@ Clojure REPL for Atom written in ClojureScript with full Teletype support for pa
 Open or add your project folder inside Atom, and follow one of the methods below:
 
 Start a local nREPL server with Leiningen:
+
 1. Open a file in the project folder, and focus on the file so it has a blinking cursor.
 
 2. Go to Atom's menu bar and select Packages -> Clojure Party Repl -> Start Local REPL
@@ -16,6 +17,7 @@ Start a local nREPL server with Leiningen:
 3. Make sure `lein` command is available and there's `project.clj` in the root directory.
 
 Connect to a remote nREPL server:
+
 1. Have a running nREPL ready to be connected.
 
 2. Go to Atom's menu bar and select Packages -> Clojure Party Repl -> Connect to Remote REPL server
@@ -23,10 +25,10 @@ Connect to a remote nREPL server:
 3. Fill out the pop out panel and hit an Enter key to connect.
 
 Connect to a remote [Unrepl](https://github.com/Unrepl/unrepl) server:
-1. Have a running Clojure Socket REPL ready to be connected. Socket REPL can be launched in a few different ways:
-    - Use Leiningen project by adding `:jvm-opts ["-Dclojure.server.repl={:port 9999 :accept clojure.core.server/repl}"]` to your `project.clj` and start your repl normally.
-    - Use Clojure jar in the terminal by typing in `java -Dclojure.server.myrepl="{:port 9999,:accept,clojure.core.server/repl}" -jar ~/.m2/repository/org/clojure/clojure/1.8.0/clojure-1.8.0.jar`.
 
+1. Have a running Clojure Socket REPL ready to be connected. Socket REPL can be launched in a few different ways:
+   - Use Leiningen project by adding `:jvm-opts ["-Dclojure.server.repl={:port 9999 :accept clojure.core.server/repl}"]` to your `project.clj` and start your repl normally.
+   - Use Clojure jar in the terminal by typing in `java -Dclojure.server.myrepl="{:port 9999,:accept,clojure.core.server/repl}" -jar ~/.m2/repository/org/clojure/clojure/1.8.0/clojure-1.8.0.jar`.
 
 2. Go to Atom's menu bar and select Packages -> Clojure Party Repl -> Connect to Remote REPL server
 
@@ -38,6 +40,7 @@ When you're done with the REPL, simply close the tab and the REPL will be discon
 
 
 Execute code in REPL using the following methods:
+
 - Type in code inside the `Clojure Party REPL Entry` tab and hit Command-Enter keys.
 - Move a cursor in any part of the code in a file inside a project and hit Command-Enter keys.
 - Select code in a file that's inside a project and hit Command-Enter keys.
@@ -166,9 +169,9 @@ Exported functions can be linked to keybindings and menu items, checkout the sta
 
 
 ### Pair programming / Teletype support
-- [ ] Use Teletype to send messages between the host and guest.
-- [ ] Sync the REPL history between the host and the guest.
-- [ ] Find a better way to link the REPL editors between the host and guest. Right now they are just linked by the title like “REPL Entry”, but this limits us to just 1 REPL over Teletype at a time.
+- [x] Use Teletype to send messages between the host and guest.
+- [x] Sync the REPL history between the host and the guest.
+- [x] Find a better way to link the REPL editors between the host and guest. Right now they are just linked by the title like “REPL Entry”, but this limits us to just 1 REPL over Teletype at a time.
 - [ ] Find a way to gracefully open both the input-editor and output-editor (history) editors at once on the guest’s side when the host clicks in either one. For example trick Teletype to sending both editors over to the guest at the same time.
 
 
@@ -181,10 +184,9 @@ Exported functions can be linked to keybindings and menu items, checkout the sta
 ### User interface improvements
 - [ ] Integrate with Atom IDE
 - [x] When executing code, temporarily highlight the top-level form or the selected code being sent to the REPL. Likewise, somehow indicate when there's a syntax error preventing a top-level form from being found.
-- [ ] Create a new kind of Pane which holds both the REPL input-editor and output-editor.
-- [ ] Add buttons to REPL Pane like "Execute" and "Clear history".
+- [x] Add buttons to REPL Pane like "Execute" and "Clear history".
 - [ ] Make the "Execute" button dynamically switch to "Cancel" when a long running command is executed (this should work seamlessly on the guest side too).
-- [ ] Make the output-editor (history) read-only.
+- [x] Make the output-editor (history) read-only.
 
 
 ### OS support
