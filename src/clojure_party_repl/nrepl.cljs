@@ -310,7 +310,9 @@
                                 :connection connection
                                 :session session))
                (repl/update-most-recent-repl project-name)
-               (repl/remove-placeholder-text project-name)
                (handle-messages project-name connection)
                (when (= :remote (get-in @repls [project-name :repl-process]))
-                 (repl/execute-code project-name "(.name *ns*)"))))))
+                 (repl/execute-code project-name "(.name *ns*)"))
+               (go
+                (<! (timeout 100))
+                (repl/remove-placeholder-text project-name))))))

@@ -230,15 +230,17 @@
                                   :add-newline? false)))
 
 (defmethod handle-unrepl-tuple :unrepl.upgrade/failed [project-name [tag]]
-  (repl/append-to-output-editor project-name "Unable to upgrade your REPL to Unrepl."))
+  (repl/append-to-output-editor project-name "\nUnable to upgrade your REPL to Unrepl.")
+  (go
+    (<! (timeout 100))
+    (repl/remove-placeholder-text project-name)))
 
 (defmethod handle-unrepl-tuple :unrepl/hello [project-name [tag payload]]
   (let [{:keys [session actions]} payload
         {:keys [start-aux exit set-source :unrepl.jvm/start-side-loader]} actions
         {:keys [connection port host]} (get @repls project-name)
         unrepl-ns (.-ns (first exit))]
-    (console-log "Upgraded to Unrepl: " session)
-    (console-log "Available commands are: " (string/join " " [start-aux exit set-source start-side-loader]))
+    (console-log "Upgraded to unREPL: " session)
     (swap! repls update-in [project-name :connection]
            #(assoc % :actions {:exit (str exit)
                                :set-source (str set-source)}
@@ -251,7 +253,10 @@
                                                      "\\/fetch\\s+\\:[A-Za-z]+\\_\\_[0-9]+\\))\\}") "gm")))
     (add-elision-click-handler project-name)
     (add-elision-append-handler project-name)
-    (add-elision-marker-layer project-name)))
+    (add-elision-marker-layer project-name)
+    (go
+      (<! (timeout 100))
+      (repl/remove-placeholder-text project-name))))
 
 (defn read-clojure-var [v]
   (symbol (str "#'" v)))

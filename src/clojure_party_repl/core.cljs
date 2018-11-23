@@ -139,6 +139,8 @@
        :type "string"
        :default ""}}))
 
+;; TODO: Cleanup the hidden editors. If we close editors too early, Atom
+;;       doesn't open any files and be blank when not in Dev mode.
 (defn activate
   "Initializes the plugin, called automatically by Atom, during startup or if
   the plugin was just installed or re-enabled."
@@ -148,7 +150,7 @@
   (observe-settings-changes)
   (panel/create-connection-panel)
   (hidden-editor/create-hidden-pane)
-  (hidden-editor/clean-up-hidden-editor)
+  ;(hidden-editor/clean-up-hidden-editor)
   (guest/look-for-teletyped-repls))
 
 (defn deactivate

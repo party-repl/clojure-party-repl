@@ -23,6 +23,7 @@
     (let [placeholder-element (-> (.getElement output-editor)
                                   (.getElementsByClassName "placeholder-text")
                                   (aget 0))]
+      (console-log "Removing placeholder text" (.getElement output-editor) placeholder-element)
       (set! (.-innerText placeholder-element) ""))))
 
 (defn set-output-editor-read-only [project-name]

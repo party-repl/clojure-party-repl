@@ -50,7 +50,7 @@
   "Opens a text editor for displaying repl outputs."
   [project-name]
   (-> (.-workspace js/atom)
-      (.open (str output-editor-title " " project-name) (js-obj "split" "right"))
+      (.open (str output-editor-title " - " project-name) (js-obj "split" "right"))
       (.then (fn [editor]
                 (set! (.-isModified editor) (fn [] false))
                 (set! (.-isModified (.getBuffer editor)) (fn [] false))
@@ -60,6 +60,7 @@
                 (set-grammar editor)
                 (.moveToBottom editor)
                 (swap! repls update project-name #(assoc % :host-output-editor editor))
+                (console-log "Opened output editor")
                 (.setPlaceholderText editor output-editor-placeholder)
                 (add-subscription project-name
                                   (.onDidChangeActiveTextEditor (.-workspace js/atom)
@@ -100,7 +101,7 @@
   teletype in the entry, so that it can detect when to execute the code."
   [project-name]
   (-> (.-workspace js/atom)
-      (.open (str input-editor-title " " project-name) (js-obj "split" "down"))
+      (.open (str input-editor-title " - " project-name) (js-obj "split" "down"))
       (.then (fn [editor]
                 (set! (.-isModified editor) (fn [] false))
                 (set! (.-isModified (.getBuffer editor)) (fn [] false))
@@ -158,7 +159,7 @@
   text editor is a hidden buffer."
   [project-name]
   (let [hidden-editor (hidden-editor/create-hidden-editor)
-        title (str hidden-editor-title " " project-name)
+        title (str hidden-editor-title " - " project-name)
         path (.resolvePath (.-project js/atom) title)]
     (console-log "Creating hidden editor:" title path)
     (swap! repls update project-name #(assoc % :host-hidden-editor hidden-editor))

@@ -18,7 +18,7 @@
   (let [title (.getTitle editor)
         i (index-of title subtitle)]
     (if (some? i)
-      (subs title (+ i (count (str subtitle " "))))
+      (subs title (+ i (count (str subtitle " - "))))
       (console-log "ERROR: REPL Editor should contain " subtitle " in the title"))))
 
 (defn ^:private split-right [editor]
