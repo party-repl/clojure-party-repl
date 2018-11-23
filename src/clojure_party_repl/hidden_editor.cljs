@@ -1,5 +1,5 @@
 (ns clojure-party-repl.hidden-editor
-  (:require [clojure.string :refer [trim-newline]]
+  (:require [clojure.string :refer [trim-newline starts-with?]]
             [cljs.nodejs :as node]
             [cljs.reader :refer [read-string]]
             [clojure-party-repl.strings :refer [hidden-editor-title]]
@@ -59,24 +59,31 @@
         next-index (mod (inc current-index) (inc (.-length panes)))]
     (aget panes next-index)))
 
+(defn ^:private hide-resize-handle [pane-element]
+  (console-log "Hiding resize handle" pane-element)
+  (when-let [handle-element (.-nextSibling pane-element)]
+    (when (= resize-handle-tag-name (.-tagName handle-element))
+      (set! (.-id handle-element) "hidden-resize-handle"))))
+
 (defn ^:private add-listeners
   "This Pane should only contain our hidden buffers. When other editors
   accidently get placed in here, we want to move them to the next available
   Pane."
   [hidden-pane]
   (swap! state update :disposables concat
-    [(.onDidAddItem hidden-pane (fn [event]
-                                  (let [item (.-item event)]
-                                    (when-not (hidden-editor? item)
-                                      (console-log "Moving item to the next pane!" item)
-                                      (.moveItemToPane hidden-pane item (get-next-pane hidden-pane))))))]))
+    [(.onDidAddItem hidden-pane
+                    (fn [event]
+                      (let [item (.-item event)]
+                        (when-not (hidden-editor? item)
+                          (console-log "Moving item to the next pane!" item)
+                          (.moveItemToPane hidden-pane item (get-next-pane hidden-pane))))))
+     (.onDidAddPane (.-workspace js/atom)
+                    (fn [event]
+                      (when-not (= (.-pane event) hidden-pane)
+                        (when-let [hidden-pane-element (.getElement hidden-pane)]
+                          (hide-resize-handle hidden-pane-element)))))]))
 
-(defn ^:private hide-resize-handle [pane-element]
-  (let [handle-element (.-nextSibling pane-element)]
-    (when (= resize-handle-tag-name (.-tagName handle-element))
-      (set! (.-id handle-element) "hidden-resize-handle"))))
-
-(defn join-text [text [state-type initial-value]]
+(defn ^:private join-text [text [state-type initial-value]]
   (str text state-type "\n" initial-value "\n"))
 
 (defn ^:private initialize-hidden-state [hidden-editor]
@@ -89,7 +96,7 @@
   [project-name hidden-editor changes change-callbacks]
   (console-log "Hidden editor changes" changes)
   (doseq [change changes]
-    (when (or (.-newRange change) (.-newText change))
+    (when (and (.-newRange change) (.-newText change))
       (let [row (.-row (.-start (.-newRange change)))
             state-type (find-state-type-for-row hidden-editor row)]
         (console-log "Change is for" state-type (.-newText change))
@@ -160,7 +167,15 @@
 (defn ^:private add-dummy-editor [hidden-pane]
   (let [dummy-editor (create-hidden-editor)]
     (swap! state assoc :hidden-dummy-editor dummy-editor)
+    (.setPath (.getBuffer dummy-editor) hidden-editor-title)
     (.addItem hidden-pane dummy-editor)))
+
+(defn clean-up-hidden-editor []
+  (let [pane-items (.getPaneItems (.-workspace js/atom))]
+    (doseq [pane-item pane-items]
+      (when-let [title (.getTitle pane-item)]
+        (when (starts-with? title hidden-editor-title)
+          (close-editor pane-item))))))
 
 (defn destroy-hidden-pane
   "Destroys the Pane. If this is the last Pane, all the items inside it will be

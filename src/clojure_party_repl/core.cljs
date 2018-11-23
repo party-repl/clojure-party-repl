@@ -148,6 +148,7 @@
   (observe-settings-changes)
   (panel/create-connection-panel)
   (hidden-editor/create-hidden-pane)
+  (hidden-editor/clean-up-hidden-editor)
   (guest/look-for-teletyped-repls))
 
 (defn deactivate
