@@ -76,7 +76,10 @@
                                (.setAttribute "class" "button-container"))]
     (doseq [[title callback] buttons]
       (let [button (doto (.createElement js/document "button")
-                         (.setAttribute "class" title))]
+                         (.setAttribute "class" (str (if (= title "execute")
+                                                          "btn btn-primary "
+                                                          "btn ")
+                                                      title)))]
         (set! (.-innerText button) title)
         (.appendChild button-container button)
         (.addEventListener button "click" (partial callback project-name editor))))

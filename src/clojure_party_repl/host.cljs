@@ -76,22 +76,9 @@
                                                           (dispose project-name)
                                                           (dispose-project-if-empty project-name))))))))
 
-(defn prepare-older-repl-history [project-name editor]
-  (let [{:keys [current-history-index host-hidden-editor guest-hidden-editor]} (get @repls project-name)
-        hidden-editor (or host-hidden-editor guest-hidden-editor)]
-    (when (< current-history-index
-             (count (get-in @repls [project-name :repl-history])))
-      (hidden-editor/replace-hidden-state hidden-editor :current-history-index (inc current-history-index)))))
-
-(defn prepare-newer-repl-history [project-name editor]
-  (let [{:keys [current-history-index host-hidden-editor guest-hidden-editor]} (get @repls project-name)
-        hidden-editor (or host-hidden-editor guest-hidden-editor)]
-    (when (>= (get-in @repls [project-name :current-history-index]) 0)
-      (hidden-editor/replace-hidden-state hidden-editor :current-history-index (dec current-history-index)))))
-
 (def action-buttons {"execute" execution/execute-entered-text
-                     "back" prepare-older-repl-history
-                     "forward" prepare-newer-repl-history
+                     "‹" hidden-editor/prepare-older-repl-history
+                     "›" hidden-editor/prepare-newer-repl-history
                      "cancel" repl/interrupt-process})
 
 ;; TODO: Set a placeholder text to notify user when repl is ready.
@@ -101,7 +88,8 @@
   teletype in the entry, so that it can detect when to execute the code."
   [project-name]
   (-> (.-workspace js/atom)
-      (.open (str input-editor-title " - " project-name) (js-obj "split" "down"))
+      (.open (str input-editor-title " - " project-name) (js-obj "split" "down"
+                                                                 "showLineNumbers" false))
       (.then (fn [editor]
                 (set! (.-isModified editor) (fn [] false))
                 (set! (.-isModified (.getBuffer editor)) (fn [] false))

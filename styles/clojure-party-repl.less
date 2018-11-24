@@ -17,28 +17,31 @@
 }
 
 atom-text-editor.repl-entry {
-    padding-top: 28px;
+    padding-top: 30px;
 }
 
 .repl-entry .button-container {
     position: absolute;
     top: 0px;
     left: 0px;
-    height: 28px;
+    height: 30px;
     width: 100%;
-    padding: 2px 0px;
-    background-color: blue;
+    background-color: transparent;
 }
 
 .repl-entry .button-container button {
     float: right;
-    color: grey;
-    height: 24px;
     margin-right: 2px;
 }
 
-.repl-entry .button-container button.back,
-.repl-entry .button-container button.forward {
+.repl-entry .button-container button:focus {
+    border-color: #111314;
+    outline: 2px auto #111314;
+    box-shadow: none;
+}
+
+.repl-entry .button-container button.‹,
+.repl-entry .button-container button.› {
     float: left;
     margin-left: 2px;
     margin-right: 0px;

@@ -164,6 +164,20 @@
     (insert-hidden-state hidden-editor :repl-history code)
     (replace-hidden-state hidden-editor :current-history-index -1)))
 
+(defn prepare-older-repl-history [project-name editor]
+  (let [{:keys [current-history-index host-hidden-editor guest-hidden-editor]} (get @repls project-name)
+        hidden-editor (or host-hidden-editor guest-hidden-editor)]
+    (when (< current-history-index
+             (count (get-in @repls [project-name :repl-history])))
+      (replace-hidden-state hidden-editor :current-history-index (inc current-history-index)))))
+
+(defn prepare-newer-repl-history [project-name editor]
+  (let [{:keys [current-history-index host-hidden-editor guest-hidden-editor]} (get @repls project-name)
+        hidden-editor (or host-hidden-editor guest-hidden-editor)]
+    (when (>= (get-in @repls [project-name :current-history-index]) 0)
+      (replace-hidden-state hidden-editor :current-history-index (dec current-history-index)))))
+
+
 (defn ^:private add-dummy-editor [hidden-pane]
   (let [dummy-editor (create-hidden-editor)]
     (swap! state assoc :hidden-dummy-editor dummy-editor)

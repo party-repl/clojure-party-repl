@@ -9,10 +9,12 @@
                                                           dispose-project-if-empty
                                                           decode-base64
                                                           add-repl
+                                                          add-buttons
                                                           repls
                                                           state
                                                           console-log]]
-            [clojure-party-repl.hidden-editor :as hidden-editor]))
+            [clojure-party-repl.hidden-editor :as hidden-editor]
+            [clojure-party-repl.execution :as execution]))
 
 (defn ^:private find-project-name-from-title [editor subtitle]
   (let [title (.getTitle editor)
@@ -62,6 +64,10 @@
                                       (swap! repls update project-name #(assoc % :guest-output-editor nil))
                                       (dispose-project-if-empty project-name))))))
 
+(def action-buttons {"execute" execution/prepare-to-execute
+                     "‹" hidden-editor/prepare-older-repl-history
+                     "›" hidden-editor/prepare-newer-repl-history})
+
 (defn ^:private link-input-editor
   "Keeps the reference to the input editor associated with the project name.
   If the output editor is already found, moves the input editor below the
@@ -72,6 +78,7 @@
       (add-repl project-name))
     (swap! repls update project-name #(assoc % :guest-input-editor editor))
     (.add (.-classList (.-element editor)) "repl-entry")
+    (add-buttons project-name editor action-buttons)
     (add-subscription project-name
                       (.onDidDestroy editor
                                     (fn [event]
